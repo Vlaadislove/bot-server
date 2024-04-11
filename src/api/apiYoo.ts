@@ -1,0 +1,77 @@
+import { IConfirmationType, YooCheckout} from '@a2seven/yoo-checkout';
+
+const checkout = new YooCheckout({
+    shopId: '361706',
+    secretKey: 'test_LRtVZfzCDW6kMhCUJQdKikyYtwVw2rD1PUVExxuSPrE'
+});
+
+interface ICreatePayload {
+    amount: {
+        value: string; 
+        currency: string; 
+    };
+    confirmation: {
+        type: IConfirmationType;
+        return_url: string; 
+    };
+    capture: boolean; 
+}
+
+
+export const createPaymentApi = async (price:number, idempotenceKeyClient:string) => {
+
+    const idempotenceKey = idempotenceKeyClient
+
+    const createPayload:ICreatePayload = {
+        amount: {
+            value: `${price}.00`,
+            currency: 'RUB'
+        },
+        confirmation: {
+            type: 'redirect',
+            return_url: 'https://t.me/vpn_test_vlad_bot'
+        },
+        capture: true
+    };
+
+    try {
+        const payment = await checkout.createPayment(createPayload, idempotenceKey);
+        return payment
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+export const getPaymentApi = async (paymentIdClient:string) => {
+
+    const paymentId = paymentIdClient;
+
+    try {
+        const payment = await checkout.getPayment(paymentId);
+        return payment
+    } catch (error) {
+        console.error(error);
+    }
+
+}
+
+
+
+// export const capturePayment = async () => {
+
+//     const idempotenceKey = '26469hc4-a1f0-49db-807e-f0d67c2ed5a6'
+//     const paymentId = '2da78c08-000f-5000-a000-1ff1288a48e9'
+
+//     const capturePayload= {
+//         amount: {
+//             value: '2.00',
+//             currency: 'RUB'
+//         }
+//     };
+//     try {
+//         const payment = await checkout.capturePayment(paymentId, capturePayload, idempotenceKey);
+//         console.log(payment)
+//     } catch (error) {
+//         console.error(error);
+//     }
+// }
