@@ -2,7 +2,7 @@ import mongoose, { Model, Document, Types } from "mongoose";
 
 
 
-export const SubscriptionSchema = new mongoose.Schema(
+export const SubscriptionFreeSchema = new mongoose.Schema(
   {
     userId: {
       type: Number,
@@ -27,16 +27,15 @@ export const SubscriptionSchema = new mongoose.Schema(
     expireAt: {
       type: Date,
     },
-    //TODO: тут не факт что Number нужен
     warningDay: {
-      type: []
+      type: [Number]
     },
     server: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Server'
     }
   },
-  { timestamps: true, collection: "subscription" }
+  { timestamps: true, collection: "subscription-free" }
 );
 
-export default mongoose.model('Subscription', SubscriptionSchema)
+export default mongoose.model('SubscriptionFree', SubscriptionFreeSchema)

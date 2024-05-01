@@ -5,17 +5,20 @@ import SubscriptionSchema from '../models/subscription-model';
 import { addClient } from './xray-service';
 import { bot } from '../index'
 import { InlineKeyboard } from 'grammy';
+import { checkServer, simulateAsyncOperation } from './other-service';
+import SubscriptionFreeSchema from '../models/free-subscription-model';
+import UserSchema from '../models/user-model';
+import ServerSchema from '../models/server-model';
 
 
 export const createPayment = async (userId: number, price: number) => {
-    //TODO: Тут надо сделать проверку на то, что бы не было больше N количества счетов на проверку
-
     const idempotenceKeyClient = uuidv4()
     const payment = await createPaymentApi(price, idempotenceKeyClient)
 
     if (!payment) return { error: { message: 'Session not found' } }
 
     const pay = new PaymentSchema({
+        price,
         userId,
         paymentId: payment.id,
         idempotenceKeyClient,
@@ -42,19 +45,30 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
                 case "succeeded": {
                     console.log('Платеж в статусе: success')
                     const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient })
-                    if (!payment) throw new Error('Платеж не найдет')
-                    payment.status = "succeeded"
-                    await payment.save()
-                    succeededEvent(userId, price)
+                    if (payment) {
+                        payment.status = "succeeded"
+                        await payment.save()
+                    } else {
+                        console.log('Платеж не найдет')
+                        stopLoop = true
+                        break
+                    }
+
+                    paySucceeded(userId, price)
                     stopLoop = true
                     break
                 }
                 case "canceled": {
                     console.log('Платеж в статусе: canceled')
                     const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient })
-                    if (!payment) throw new Error('Платеж не найдет')
-                    payment.status = "canceled"
-                    await payment.save()
+                    if (payment) {
+                        payment.status = "canceled"
+                        await payment.save()
+                    } else {
+                        console.log('Платеж не найден')
+                        stopLoop = true
+                        break
+                    }
                     console.log(Date())
                     stopLoop = true
                     break
@@ -73,67 +87,103 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
     }
 }
 
-export const succeededEvent = async (userId: number, price: string) => {
-    // const sub = await SubscriptionSchema.findOne({ userId })
-    // if (!sub) throw new Error('Пользователь не найден')
-    // if(!sub.statusSub){
+export const paySucceeded = async (userId: number, price: string) => {
+    const day = price == '140' ? 30 : 90
+    const user = await UserSchema.findOne({ userId })
 
-    // }
 
-    
-    const config: string = await addClient(userId)
-    const user = new SubscriptionSchema({
+    if (typeof user?.inviteId == 'number') {
+        const inviteSubFree = await SubscriptionFreeSchema.findOne({ userId: user.inviteId, statusSub: true })
+        const inviteSub = await SubscriptionSchema.findOne({ userId: user.inviteId, statusSub: true })
+
+        if (inviteSubFree) {
+            const { userId, config, uuid, statusSub, subExpire, server } = inviteSubFree
+
+            const expirationDate = new Date(new Date(`${subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);;
+
+            const subscription = new SubscriptionSchema({
+                userId,
+                config,
+                server,
+                uuid,
+                statusSub,
+                subExpire: expirationDate,
+            })
+            inviteSubFree.statusSub = false
+            user.inviteId = `${user.inviteId}`
+
+            await user.save()
+            await subscription.save()
+            await inviteSubFree.save()
+        } else if (inviteSub) {
+            const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);;
+            inviteSub.subExpire = expirationDate
+            user.inviteId = `${user.inviteId}`
+            await user.save()
+            await inviteSub.save()
+        }
+    }
+
+    const subscriptionFreeCheck = await SubscriptionFreeSchema.findOne({ userId, statusSub: true })
+    const subscriptionCheck = await SubscriptionSchema.findOne({ userId, statusSub: true })
+
+    if (subscriptionFreeCheck) {
+
+        const { userId, config, uuid, statusSub, subExpire, server } = subscriptionFreeCheck
+
+        const expirationDate = new Date(new Date(`${subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);;
+
+        const subscription = new SubscriptionSchema({
+            userId,
+            config,
+            server,
+            uuid,
+            statusSub,
+            subExpire: expirationDate,
+        })
+        subscriptionFreeCheck.statusSub = false
+        await subscription.save()
+        await subscriptionFreeCheck.save()
+        return
+
+    } else if (subscriptionCheck) {
+        const expirationDate = new Date(new Date(`${subscriptionCheck.subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);
+        subscriptionCheck.subExpire = expirationDate
+        await subscriptionCheck.save()
+        return
+    }
+
+    const server = await checkServer()
+
+    if (!server.cookie) return null
+
+    const { config, uuid } = await addClient(userId, server.cookie, server.baseUrl)
+    if (!config) return null
+
+    const subscription = new SubscriptionSchema({
         userId,
         config: config,
+        uuid,
+        server,
         statusSub: true,
-        subExpire: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        subExpire: new Date(Date.now() + day * 24 * 60 * 60 * 1000),
     })
-    await user.save()
-    const oneMonthInlineBoard = new InlineKeyboard().text('Инструкция', `Инструкция`)
-    await bot.api.sendMessage(userId, config, {
-        reply_markup: oneMonthInlineBoard
-    })
-    await bot.api.sendMessage(userId, 'Это ваш конфиг, вставте его в приложение FoXray на IOS')
 
-
-}
-
-
-export const freeSub = async (userId: number) => {
-    const sub = await SubscriptionSchema.findOne({ userId })
-    if (!sub) {
-        const config: string = await addClient(userId)
-        const user = new SubscriptionSchema({
-            userId,
-            config: config,
-            statusSub: true,
-            subExpire: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        })
-        await user.save()
-
-        await bot.api.sendMessage(userId, config)
-        await bot.api.sendMessage(userId, 'Это ваш конфиг, вставте его в приложение FoXray на IOS')
-        return;
+    if (user && !user?.useFreeSub) {
+        user.useFreeSub = true
+        user.save()
     }
+    await ServerSchema.findByIdAndUpdate(server.id, {
+        $inc: { quantityUsers: 1 },
+    }) // -1
+    await subscription.save()
+    const oneMonthInlineBoard = new InlineKeyboard().text('Инструкция', `Инструкция`)
+    await bot.api.sendMessage(userId, config)
+    await bot.api.sendMessage(userId, 'Это ваш конфиг, вставте его в приложение FoXray на IOS', {
+        reply_markup: oneMonthInlineBoard
+
+    })
 }
 
-export const canceledEvent = async () => {
-
-}
-export const pendingEvent = async () => {
-
-}
 
 
-
-
-
-
-
-function simulateAsyncOperation(ms: number) {
-    return new Promise(function (resolve, reject) {
-        setTimeout(function () {
-            resolve("Результат асинхронной операции");
-        }, ms);
-    });
-}

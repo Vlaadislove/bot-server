@@ -1,11 +1,15 @@
-import express, { Express, Request, Response } from 'express'
+import express, { Express } from 'express'
 import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import * as settings from "./settings"
 import { Bot} from 'grammy'
 import paymentRoute from './routes/payment'
-import { addClient, login } from './service/xray-service'
+import { checkServer } from './service/other-service'
+import { login } from './service/xray-service'
+import { checkSubscribe } from './service/check-service'
+
+
 
 dotenv.config()
 
@@ -29,5 +33,7 @@ async function start() {
 }
 
 start()
-login()
+// checkSubscribe()
+// freeSubscription(851094841)
+
 // addClient(432432432)

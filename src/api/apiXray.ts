@@ -14,8 +14,7 @@ interface IClientData {
 }
 
 const instance = axios.create({
-    baseURL: 'https://miraclewebsite.freemyip.com:5555',
-    // timeout: 10000, 
+    baseURL: 'http://95.164.7.217:5555',
 });
 
 
@@ -28,9 +27,9 @@ export const loginApi = async (userData: IUserData) => {
     }
 }
 
-export const addClientApi = async (data:IClientData, cookie:string)=>{
+export const addClientApi = async (data:IClientData, cookie:string, baseUrl:string)=>{
     try {
-        const response = await instance.post('/panel/api/inbounds/addClient', data, { headers: { 'Cookie': cookie } })
+        const response = await axios.post(`${baseUrl}/panel/api/inbounds/addClient`, data, { headers: { 'Cookie': cookie } })
         return response
     } catch (error) {
         console.log(error)

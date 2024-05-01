@@ -12,6 +12,10 @@ export const PaymentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    price: {
+      type: String,
+      required: true,
+    },
     idempotenceKeyClient: {
       type: String,
       required: true,
