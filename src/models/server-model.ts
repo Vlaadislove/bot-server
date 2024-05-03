@@ -24,6 +24,7 @@ export const ServerSchema = new mongoose.Schema(
         },
         cookie: {
             type: String,
+            required: true,
         },
     },
     { timestamps: true, collection: "server" }

@@ -115,12 +115,15 @@ export const paySucceeded = async (userId: number, price: string) => {
             await user.save()
             await subscription.save()
             await inviteSubFree.save()
+            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на 7 дней после оплаты ${user.username}!`)
         } else if (inviteSub) {
             const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);;
             inviteSub.subExpire = expirationDate
+            inviteSub.warningDay = []
             user.inviteId = `${user.inviteId}`
             await user.save()
             await inviteSub.save()
+            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на 7 дней после оплаты ${user.username}!`)
         }
     }
 
@@ -144,12 +147,15 @@ export const paySucceeded = async (userId: number, price: string) => {
         subscriptionFreeCheck.statusSub = false
         await subscription.save()
         await subscriptionFreeCheck.save()
+        await bot.api.sendMessage(userId, `Ваша подписка продлена на ${day} дней`)
         return
 
     } else if (subscriptionCheck) {
         const expirationDate = new Date(new Date(`${subscriptionCheck.subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);
         subscriptionCheck.subExpire = expirationDate
+        subscriptionCheck.warningDay = []
         await subscriptionCheck.save()
+        await bot.api.sendMessage(userId, `Ваша подписка продлена на ${day} дней`)
         return
     }
 

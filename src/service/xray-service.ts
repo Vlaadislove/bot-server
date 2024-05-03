@@ -3,7 +3,7 @@ import * as settings from "../settings"
 import { v4 as uuidv4 } from 'uuid';
 import { promises as fs } from 'fs'
 import { bot } from '../index'
-import { addClientApi, loginApi } from "../api/apiXray";
+import { addClientApi, deleteClientApi, loginApi } from "../api/apiXray";
 import ServerSchema from "../models/server-model";
 
 interface AddClientResponse {
@@ -26,8 +26,8 @@ export const login = async () => {
             const cookie = response.headers['set-cookie'] && response.headers['set-cookie'].join('; ');
             await ServerSchema.findByIdAndUpdate(servers[i].id, {
                 $set: { cookie: cookie },
-              })
-              console.log(servers[i].serverName, cookie)
+            })
+            console.log(servers[i].serverName, cookie)
         }
     } catch (error) {
         console.error('Ошибка при записи в DB:', error);
@@ -61,5 +61,20 @@ export const addClient = async (tgId: number, cookie: string, baseUrl: string): 
     } else {
         console.log('Не удалось отправить конфиг', response.data.success)
         return { config: '', uuid: '' }
+    }
+}
+
+
+export const deleteClient = async (uuid:string, server: Object) => {
+    try {
+        const getServer = await ServerSchema.findByIdAndUpdate(server,{$inc: { quantityUsers: -1 }}, { new: true })
+        if(!getServer){
+            console.log('Cервер не найден')
+            return
+        }
+        await deleteClientApi(uuid, getServer.cookie, getServer.baseUrl)
+        
+    } catch (error) {
+        console.log(error)
     }
 }

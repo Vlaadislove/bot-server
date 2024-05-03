@@ -1,6 +1,17 @@
 import mongoose, { Model, Document, Types } from "mongoose";
 
-
+export interface ISubscription extends Document{
+  userId: number;
+  config: string;
+  uuid: string;
+  statusSub: boolean;
+  subExpire: Date;
+  warningDay: number[];
+  server: Types.ObjectId;
+  expireAt?: Date | null | undefined;
+  // createdAt: Date;
+  // updatedAt: Date;
+}
 
 export const SubscriptionSchema = new mongoose.Schema(
   {
@@ -24,16 +35,17 @@ export const SubscriptionSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    expireAt: {
+    expiresAt: {
       type: Date,
     },
     //TODO: тут не факт что Number нужен
     warningDay: {
-      type: []
+      type: [Number]
     },
     server: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Server'
+      ref: 'Server',
+      required: true,
     }
   },
   { timestamps: true, collection: "subscription" }

@@ -32,6 +32,7 @@ export const PaymentSchema = new mongoose.Schema(
       type: Date,
       default: () => {
         const date = new Date();
+        // date.setMinutes(date.getMinutes() + 5);
         date.setDate(date.getDate() + 90);
         return date;
       },

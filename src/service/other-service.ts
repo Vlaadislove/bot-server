@@ -65,8 +65,5 @@ export const checkServer = async () => {
             result = serversFilter[i];
         }
     }
-
-    // if (!result) return { cookie: '', baseUrl: '', id:'' }
-
     return result;
 };

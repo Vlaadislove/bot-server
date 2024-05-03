@@ -27,9 +27,19 @@ export const loginApi = async (userData: IUserData) => {
     }
 }
 
-export const addClientApi = async (data:IClientData, cookie:string, baseUrl:string)=>{
+export const addClientApi = async (data: IClientData, cookie: string, baseUrl: string) => {
     try {
         const response = await axios.post(`${baseUrl}/panel/api/inbounds/addClient`, data, { headers: { 'Cookie': cookie } })
+        return response
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+
+export const deleteClientApi = async (uuid: string, cookie: string, baseUrl: string) => {
+    try {
+        const response = await axios.post(`${baseUrl}/panel/api/inbounds/1/delClient/${uuid}`,null, { headers: { 'Cookie': cookie } })
         return response
     } catch (error) {
         console.log(error)

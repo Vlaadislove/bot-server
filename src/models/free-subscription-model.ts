@@ -24,7 +24,7 @@ export const SubscriptionFreeSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    expireAt: {
+    expiresAt: {
       type: Date,
     },
     warningDay: {
@@ -32,7 +32,8 @@ export const SubscriptionFreeSchema = new mongoose.Schema(
     },
     server: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Server'
+      ref: 'Server',
+      required: true
     }
   },
   { timestamps: true, collection: "subscription-free" }

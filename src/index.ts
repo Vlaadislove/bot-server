@@ -6,8 +6,8 @@ import * as settings from "./settings"
 import { Bot} from 'grammy'
 import paymentRoute from './routes/payment'
 import { checkServer } from './service/other-service'
-import { login } from './service/xray-service'
-import { checkSubscribe } from './service/check-service'
+// import { deleteClient, login } from './service/xray-service'
+import {checkStatusSubscribes, checkWarningDay } from './service/check-service'
 
 
 
@@ -33,7 +33,9 @@ async function start() {
 }
 
 start()
-// checkSubscribe()
+
+// checkStatusSubscribes()
+// checkWarningDay()
 // freeSubscription(851094841)
 
 // addClient(432432432)
