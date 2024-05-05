@@ -18,9 +18,7 @@ interface ICreatePayload {
 }
 
 
-export const createPaymentApi = async (price:number, idempotenceKeyClient:string) => {
-
-    const idempotenceKey = idempotenceKeyClient
+export const createPaymentApi = async (price:number, idempotenceKey:string) => {
 
     const createPayload:ICreatePayload = {
         amount: {
@@ -42,10 +40,8 @@ export const createPaymentApi = async (price:number, idempotenceKeyClient:string
     }
 }
 
-export const getPaymentApi = async (paymentIdClient:string) => {
-
-    const paymentId = paymentIdClient;
-
+export const getPaymentApi = async (paymentId:string) => {
+    
     try {
         const payment = await checkout.getPayment(paymentId);
         return payment

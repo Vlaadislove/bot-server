@@ -3,15 +3,9 @@ import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import * as settings from "./settings"
-import { Bot} from 'grammy'
+import { Bot } from 'grammy'
 import paymentRoute from './routes/payment'
-import { checkServer } from './service/other-service'
-// import { deleteClient, login } from './service/xray-service'
-import {checkStatusSubscribes, checkWarningDay } from './service/check-service'
-
-
-
-dotenv.config()
+import { checkStatusSubscribes, checkWarningDay } from './service/check-service'
 
 let app: Express = express()
 export const bot = new Bot(settings.BOT_TOKEN)
@@ -33,9 +27,10 @@ async function start() {
 }
 
 start()
+checkWarningDay()
+checkStatusSubscribes()
 
-// checkStatusSubscribes()
-// checkWarningDay()
+
 // freeSubscription(851094841)
 
 // addClient(432432432)

@@ -17,7 +17,7 @@ export const freeSubscription = async (userId: number) => {
 
     if (!server.cookie) return null
 
-    const { config, uuid, } = await addClient(userId, server.cookie, server.baseUrl)
+    const { config, uuid } = await addClient(userId, server.cookie, server.baseUrl)
 
     if (!config) return null
 
@@ -27,12 +27,15 @@ export const freeSubscription = async (userId: number) => {
         server,
         uuid,
         statusSub: true,
-        subExpire: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        //TODO: удалить
+        subExpire: new Date(Date.now() + 2 * 60 * 60 * 1000),
+        // subExpire: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     })
 
     user.useFreeSub = true
     await ServerSchema.findByIdAndUpdate(server.id, {
-        $inc: { quantityUsers: 1 },}) // -1
+        $inc: { quantityUsers: 1 },
+    }) // -1
     await user.save()
     await subscription.save()
 
