@@ -2,6 +2,9 @@ import SubscriptionSchema, { ISubscription } from "../models/subscription-model"
 import { bot } from '../index'
 import SubscriptionFreeSchema from "../models/free-subscription-model"
 import { deleteClient } from "./xray-service"
+import PaymentSchema from "../models/payment-model"
+import { checkPayment } from "./payment-service"
+import { simulateAsyncOperation } from "./other-service"
 
 
 export const checkWarningDay = async () => {
@@ -22,11 +25,12 @@ export const checkWarningDay = async () => {
 
     const updateWarningDay = async (subscription: ISubscription, warningDay: number) => {
         await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
-        await bot.api.sendMessage(subscription.userId, `Осталось ${warningDay} дня до окончания подписки!`)
+        warningDay == 3 && await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`)
+        warningDay == 1 && await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания подписки!❗️`)
     };
     const updateFreeWarningDay = async (subscription: ISubscription, warningDay: number) => {
         await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
-        await bot.api.sendMessage(subscription.userId, `Осталось ${warningDay} дня до окончания бесплатной подписки!`)
+        await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания бесплатной подписки!❗️`)
     };
 
     warningThreeDay.forEach(async subscription => await updateWarningDay(subscription, 3));
@@ -48,12 +52,12 @@ export const checkStatusSubscribes = async () => {
     const checkStatusSubscribe = async (subscription: ISubscription) => {
         await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
         await deleteClient(subscription.uuid, subscription.server)
-        await bot.api.sendMessage(subscription.userId, `Подписка кончилась!`)
+        await bot.api.sendMessage(subscription.userId, `Подписка кончилась!😢`)
     }
     const checkStatusSubscribeFree = async (subscription: ISubscription) => {
         await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
         await deleteClient(subscription.uuid, subscription.server)
-        await bot.api.sendMessage(subscription.userId, `Бесплатная одписка кончилась!`)
+        await bot.api.sendMessage(subscription.userId, `Бесплатная одписка кончилась!😢`)
     }
 
     getSubscribe.forEach(subscription => checkStatusSubscribe(subscription));
@@ -62,6 +66,22 @@ export const checkStatusSubscribes = async () => {
     setTimeout(checkStatusSubscribes, 3000)
 }
 
-export const checkPaymentOneTime = () => {
+export const checkPaymentOneTime = async () => {
+    const maxAttempts = 3;
 
+    for (let attempts = 1; attempts <= maxAttempts; attempts++) {
+        try {
+            const payments = await PaymentSchema.find({ status: 'pending' });
+            for (const p of payments) {
+                await checkPayment(p.paymentId, p.userId, p.price);
+                await simulateAsyncOperation(1000);
+            }
+            break;
+        } catch (error) {
+            console.log(error);
+            if (attempts === maxAttempts) {
+                console.log("Превышено количество попыток вызова");
+            }
+        }
+    }
 }

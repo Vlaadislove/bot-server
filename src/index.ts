@@ -5,7 +5,7 @@ import cors from 'cors'
 import * as settings from "./settings"
 import { Bot } from 'grammy'
 import paymentRoute from './routes/payment'
-import { checkStatusSubscribes, checkWarningDay } from './service/check-service'
+import { checkPaymentOneTime, checkStatusSubscribes, checkWarningDay } from './service/check-service'
 
 let app: Express = express()
 export const bot = new Bot(settings.BOT_TOKEN)
@@ -29,6 +29,7 @@ async function start() {
 start()
 checkWarningDay()
 checkStatusSubscribes()
+checkPaymentOneTime()
 
 
 // freeSubscription(851094841)

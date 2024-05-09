@@ -11,6 +11,7 @@ interface AddClientResponse {
     uuid: string;
 }
 
+//TODO: сделать вызов логин каждый день
 export const login = async () => {
     try {
         const servers = await ServerSchema.find()
@@ -56,6 +57,7 @@ export const addClient = async (tgId: number, cookie: string, baseUrl: string): 
     try {
         const response = await addClientApi(data, cookie, baseUrl)
         if (!response) throw new Error('Ошибка добавления клиента')
+            console.log(response.data)
         if (response.data.success) {
             const config: string = `vless://${uuid}@95.164.7.217:443?type=tcp&security=reality&pbk=${settings.VPN_PUBLIC_KEY}&fp=firefox&sni=yahoo.com&sid=bf152d81&spx=%2F&flow=xtls-rprx-vision#Freinds-${tgId}`
             return { config, uuid }

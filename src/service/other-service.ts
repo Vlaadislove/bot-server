@@ -39,12 +39,17 @@ export const freeSubscription = async (userId: number) => {
     await user.save()
     await subscription.save()
 
-    const oneMonthInlineBoard = new InlineKeyboard().text('🗂 Инструкция', `🗂 Инструкция`)
+    const oneMonthInlineBoard = new InlineKeyboard().text('🗂 Инструкция', `instructions`)
+
+    await bot.api.sendMessage(userId, '❗️<i>Обрати внимание, что этот конфиг предназначен только для одного устройства.</i>❗️', {
+        parse_mode: 'HTML'
+    })
     await bot.api.sendMessage(userId, `<code>${config}</code>`, {
         parse_mode: 'HTML'
     })
-    await bot.api.sendMessage(userId, 'Это ваш конфиг ⬆ для VPN, скопируйте его и нажмите на кнопку 🗂 Инструкция, выберите вашу операционную систему и подключайтесь к нам!', {
-        reply_markup: oneMonthInlineBoard
+    await bot.api.sendMessage(userId, 'Это ваш конфиг ⬆ для VPN, скопируйте его(через долгое нажатие или просто нажмите на сообщение)  и нажмите на кнопку 🗂<b>Инструкция</b>, выберите ваше устройство и подключайтесь к нам!', {
+        reply_markup: oneMonthInlineBoard,
+        parse_mode:'HTML'
     })
 }
 

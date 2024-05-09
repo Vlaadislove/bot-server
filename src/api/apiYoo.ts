@@ -1,9 +1,14 @@
 import { IConfirmationType, YooCheckout} from '@a2seven/yoo-checkout';
+import * as settings from "../settings"
 
 const checkout = new YooCheckout({
-    shopId: '361706',
-    secretKey: 'test_LRtVZfzCDW6kMhCUJQdKikyYtwVw2rD1PUVExxuSPrE'
+    shopId: settings.YM_SHOP_IP,
+    secretKey: settings.YM_SECRET_KEY
 });
+// const checkout = new YooCheckout({
+//     shopId: '361023',
+//     secretKey: 'live__tSTCEF8qA-1KGR8kp5WtRsvm3PwbfhwgueiOEPpNsw'
+// });
 
 interface ICreatePayload {
     amount: {

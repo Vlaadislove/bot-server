@@ -53,7 +53,6 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
                         stopLoop = true
                         break
                     }
-
                     paySucceeded(userId, price)
                     stopLoop = true
                     break
@@ -92,7 +91,7 @@ export const paySucceeded = async (userId: number, price: string) => {
     const user = await UserSchema.findOne({ userId })
 
 
-    if (typeof user?.inviteId == 'number') {
+    if (typeof user?.inviteId == 'number' && user.userId !== user.inviteId) {
         const inviteSubFree = await SubscriptionFreeSchema.findOne({ userId: user.inviteId, statusSub: true })
         const inviteSub = await SubscriptionSchema.findOne({ userId: user.inviteId, statusSub: true })
 
@@ -117,17 +116,21 @@ export const paySucceeded = async (userId: number, price: string) => {
             await user.save()
             await subscription.save()
             await inviteSubFree.save()
-            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на 7 дней после оплаты ${user.username}!`)
+            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на <b>7</b> дней после оплаты @${user.username}!`, {
+                parse_mode: 'HTML'
+            })
         } else if (inviteSub) {
             // const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);;
-                    //TODO: удалить
+            //TODO: удалить
             const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + 1 * 60 * 60 * 1000);;
             inviteSub.subExpire = expirationDate
             inviteSub.warningDay = []
             user.inviteId = `${user.inviteId}`
             await user.save()
             await inviteSub.save()
-            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на 7 дней после оплаты ${user.username}!`)
+            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на <b>7</b> дней после оплаты @${user.username}!`, {
+                parse_mode: 'HTML'
+            })
         }
     }
 
@@ -153,7 +156,12 @@ export const paySucceeded = async (userId: number, price: string) => {
         subscriptionFreeCheck.statusSub = false
         await subscription.save()
         await subscriptionFreeCheck.save()
-        await bot.api.sendMessage(userId, `Ваша подписка продлена на ${day} дней`)
+        await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${day}</b> дней!`, {
+            parse_mode: 'HTML'
+        })
+        await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, {
+            parse_mode: 'HTML'
+        })
         return
 
     } else if (subscriptionCheck) {
@@ -163,7 +171,12 @@ export const paySucceeded = async (userId: number, price: string) => {
         subscriptionCheck.subExpire = expirationDate
         subscriptionCheck.warningDay = []
         await subscriptionCheck.save()
-        await bot.api.sendMessage(userId, `Ваша подписка продлена на ${day} дней`)
+        await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${day}</b> дней!`, {
+            parse_mode: 'HTML'
+        })
+        await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, {
+            parse_mode: 'HTML'
+        })
         return
     }
 
@@ -193,10 +206,16 @@ export const paySucceeded = async (userId: number, price: string) => {
         $inc: { quantityUsers: 1 },
     }) // -1
     await subscription.save()
-    const oneMonthInlineBoard = new InlineKeyboard().text('🗂 Инструкция', `🗂 Инструкция`)
-    await bot.api.sendMessage(userId, config)
-    await bot.api.sendMessage(userId, 'Это ваш конфиг, вставте его в приложение FoXray на IOS', {
-        reply_markup: oneMonthInlineBoard
+    const oneMonthInlineBoard = new InlineKeyboard().text('🗂 Инструкция', `instructions`)
+    await bot.api.sendMessage(userId, '❗️<i>Обрати внимание, что этот конфиг предназначен только для одного устройства.</i>❗️', {
+        parse_mode: 'HTML'
+    })
+    await bot.api.sendMessage(userId, `<code>${config}</code>`, {
+        parse_mode: 'HTML'
+    })
+    await bot.api.sendMessage(userId, 'Это ваш конфиг ⬆ для VPN, скопируйте его(через долгое нажатие или просто нажмите на сообщение) и нажмите на кнопку 🗂<b>Инструкция</b>, выберите ваше устройство и подключайтесь к нам!', {
+        reply_markup: oneMonthInlineBoard,
+        parse_mode: 'HTML'
 
     })
 }
