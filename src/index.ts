@@ -4,12 +4,18 @@ import dotenv from 'dotenv'
 import cors from 'cors'
 import * as settings from "./settings"
 import { Bot } from 'grammy'
+import { autoRetry } from "@grammyjs/auto-retry";
 import paymentRoute from './routes/payment'
-import { checkPaymentOneTime, checkStatusSubscribes, checkWarningDay } from './service/check-service'
+import { allFunctionCheck } from './service/check-service'
+
+
+
+
+export const bot = new Bot(settings.BOT_TOKEN)
+bot.api.config.use(autoRetry())
+
 
 let app: Express = express()
-export const bot = new Bot(settings.BOT_TOKEN)
-
 app.use(express.json())
 app.use(cors());
 
@@ -21,15 +27,15 @@ async function start() {
     try {
         await mongoose.connect(settings.DB_URL).then(() => console.log('Mongoose подключен к базе данных.'))
         app.listen(settings.PORT_SERVER, () => console.log(`Server started on port: ${settings.PORT_SERVER}`))
+        allFunctionCheck()
     } catch (error) {
         console.log(error);
     }
 }
 
 start()
-checkWarningDay()
-checkStatusSubscribes()
-checkPaymentOneTime()
+
+
 
 
 // freeSubscription(851094841)

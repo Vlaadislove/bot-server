@@ -38,7 +38,6 @@ export const SubscriptionSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
     },
-    //TODO: тут не факт что Number нужен
     warningDay: {
       type: [Number]
     },

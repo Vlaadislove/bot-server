@@ -11,7 +11,6 @@ export const UserSchema = new mongoose.Schema(
       },
       username: {
         type: String,
-        required: true,
       },
       first_name: {
         type: String,

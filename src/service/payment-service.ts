@@ -98,9 +98,7 @@ export const paySucceeded = async (userId: number, price: string) => {
         if (inviteSubFree) {
             const { userId, config, uuid, statusSub, subExpire, server } = inviteSubFree
 
-            // const expirationDate = new Date(new Date(`${subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);;
-            //TODO: удалить
-            const expirationDate = new Date(new Date(`${subExpire}`).getTime() + 1 * 60 * 60 * 1000);;
+            const expirationDate = new Date(new Date(`${subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);
 
             const subscription = new SubscriptionSchema({
                 userId,
@@ -120,9 +118,7 @@ export const paySucceeded = async (userId: number, price: string) => {
                 parse_mode: 'HTML'
             })
         } else if (inviteSub) {
-            // const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);;
-            //TODO: удалить
-            const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + 1 * 60 * 60 * 1000);;
+            const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);
             inviteSub.subExpire = expirationDate
             inviteSub.warningDay = []
             user.inviteId = `${user.inviteId}`
@@ -141,9 +137,7 @@ export const paySucceeded = async (userId: number, price: string) => {
 
         const { userId, config, uuid, statusSub, subExpire, server } = subscriptionFreeCheck
 
-        // const expirationDate = new Date(new Date(`${subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);;
-        //TODO: удалить
-        const expirationDate = new Date(new Date(`${subExpire}`).getTime() + 4 * 60 * 60 * 1000);;
+        const expirationDate = new Date(new Date(`${subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);
 
         const subscription = new SubscriptionSchema({
             userId,
@@ -165,9 +159,8 @@ export const paySucceeded = async (userId: number, price: string) => {
         return
 
     } else if (subscriptionCheck) {
-        // const expirationDate = new Date(new Date(`${subscriptionCheck.subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);
-        //TODO: удалить
-        const expirationDate = new Date(new Date(`${subscriptionCheck.subExpire}`).getTime() + 1 * 60 * 60 * 1000);
+        const expirationDate = new Date(new Date(`${subscriptionCheck.subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);
+
         subscriptionCheck.subExpire = expirationDate
         subscriptionCheck.warningDay = []
         await subscriptionCheck.save()
@@ -193,8 +186,7 @@ export const paySucceeded = async (userId: number, price: string) => {
         uuid,
         server,
         statusSub: true,
-        //TODO: удалить
-        subExpire: new Date(Date.now() + 4 * 60 * 60 * 1000),
+        subExpire: new Date(Date.now() + 15 * 60 * 1000),
         // subExpire: new Date(Date.now() + day * 24 * 60 * 60 * 1000),
     })
 

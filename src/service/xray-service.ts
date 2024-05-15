@@ -11,7 +11,6 @@ interface AddClientResponse {
     uuid: string;
 }
 
-//TODO: сделать вызов логин каждый день
 export const login = async () => {
     try {
         const servers = await ServerSchema.find()
@@ -28,22 +27,12 @@ export const login = async () => {
             await ServerSchema.findByIdAndUpdate(servers[i].id, {
                 $set: { cookie: cookie },
             })
-            console.log(servers[i].serverName, cookie)
+            console.log("Куки для:", servers[i].serverName, 'обновлены')
         }
     } catch (error) {
         console.error('Ошибка при записи в DB:', error);
     }
 }
-
-// export const readCookie = async () => {
-//     try {
-//         const data = await fs.readFile('cookie.txt', 'utf8')
-//         return data
-//     } catch (error) {
-//         console.error('Ошибка при чтении файла:', error);
-//         throw error;
-//     }
-// }
 
 //TODO: не нравится функция надо переделать
 export const addClient = async (tgId: number, cookie: string, baseUrl: string): Promise<AddClientResponse> => {

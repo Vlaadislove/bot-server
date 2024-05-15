@@ -1,7 +1,8 @@
+import cron from 'node-cron';
 import SubscriptionSchema, { ISubscription } from "../models/subscription-model"
 import { bot } from '../index'
 import SubscriptionFreeSchema from "../models/free-subscription-model"
-import { deleteClient } from "./xray-service"
+import { deleteClient, login } from "./xray-service"
 import PaymentSchema from "../models/payment-model"
 import { checkPayment } from "./payment-service"
 import { simulateAsyncOperation } from "./other-service"
@@ -9,19 +10,18 @@ import { simulateAsyncOperation } from "./other-service"
 
 export const checkWarningDay = async () => {
     try {
-        //TODO: удалить
         // const dayOne = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
         // const dayThree = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-        const dayOne = new Date(Date.now() + 1 * 60 * 60 * 1000) // 1 час
-        const dayThree = new Date(Date.now() + 3 * 60 * 60 * 1000) // 3 часа
+        const dayOne = new Date(Date.now() + 5 * 60 * 1000)
+        const dayThree = new Date(Date.now() + 10 * 60 * 1000)
 
         const warningThreeDay = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: dayThree }, warningDay: { $nin: 3 } })
         const warningOneDay = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: dayOne }, warningDay: { $nin: 1 } })
         const warningOneDayFreeSubscribe = await SubscriptionFreeSchema.find({ statusSub: true, subExpire: { $lt: dayOne }, warningDay: { $nin: 1 } })
 
-        // console.log('warningThreeDay', warningThreeDay)
-        // console.log('warningOneDay', warningOneDay)
-        // console.log('warningOneDayFreeSubscribe', warningOneDayFreeSubscribe)
+        console.log('warningThreeDay', warningThreeDay)
+        console.log('warningOneDay', warningOneDay)
+        console.log('warningOneDayFreeSubscribe', warningOneDayFreeSubscribe)
 
         const updateWarningDay = async (subscription: ISubscription, warningDay: number) => {
             await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
@@ -51,8 +51,8 @@ export const checkStatusSubscribes = async () => {
         const getSubscribe = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: currentDay } })
         const getStatusSubscribeFree = await SubscriptionFreeSchema.find({ statusSub: true, subExpire: { $lt: currentDay } })
 
-        // console.log('getSubscribe', getSubscribe)
-        // console.log('getStatusSubscribeFree', getStatusSubscribeFree)
+        console.log('getSubscribe', getSubscribe)
+        console.log('getStatusSubscribeFree', getStatusSubscribeFree)
 
         const checkStatusSubscribe = async (subscription: ISubscription) => {
             await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
@@ -95,4 +95,14 @@ export const checkPaymentOneTime = async () => {
             }
         }
     }
+}
+
+export const allFunctionCheck = () => {
+    cron.schedule('0 3 * * *', () => {
+        login();
+    });
+
+    checkWarningDay()
+    checkStatusSubscribes()
+    checkPaymentOneTime()
 }
