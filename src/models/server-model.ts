@@ -18,6 +18,10 @@ export const ServerSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        loginSecret: {
+            type: String,
+            required: true,
+        },
         quantityUsers: {
             type: Number,
             required: true,

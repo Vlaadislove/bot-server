@@ -15,6 +15,7 @@ export const login = async () => {
             const userData = {
                 'username': `${servers[i].username}`,
                 'password': `${servers[i].password}`,
+                'loginSecret': `${servers[i].loginSecret}`,
             };
             const response = await loginApi(userData, servers[i].baseUrl)
             if (!response) throw new Error('Ошбика получения login')
