@@ -18,9 +18,9 @@ export const freeSubscription = async (userId: number) => {
 
         if (!server.cookie) return null
 
-        const { config, uuid } = await addClient(userId, server.cookie, server.baseUrl)
-
-        if (!config) return null
+        const data = await addClient(userId, server.cookie, server.baseUrl)
+        if (!data) return null
+        const { config, uuid } = data
 
         const subscription = new SubscriptionFreeSchema({
             userId,
@@ -49,6 +49,7 @@ export const freeSubscription = async (userId: number) => {
             reply_markup: oneMonthInlineBoard,
             parse_mode: 'HTML'
         })
+        console.log(`Бесплатная подписка пользователем ${userId} получена`)
     } catch (error) {
         console.log(error)
     }

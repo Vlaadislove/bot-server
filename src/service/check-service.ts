@@ -4,33 +4,59 @@ import { bot } from '../index'
 import SubscriptionFreeSchema from "../models/free-subscription-model"
 import { deleteClient, login } from "./xray-service"
 import PaymentSchema from "../models/payment-model"
-import { checkPayment } from "./payment-service"
+import { checkPayment, paySucceeded } from "./payment-service"
 import { simulateAsyncOperation } from "./other-service"
 
 
 export const checkWarningDay = async () => {
     try {
-        // const dayOne = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
-        // const dayThree = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
-        const dayOne = new Date(Date.now() + 5 * 60 * 1000)
-        const dayThree = new Date(Date.now() + 10 * 60 * 1000)
+        const dayOne = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
+        const dayThree = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
 
         const warningThreeDay = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: dayThree }, warningDay: { $nin: 3 } })
         const warningOneDay = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: dayOne }, warningDay: { $nin: 1 } })
         const warningOneDayFreeSubscribe = await SubscriptionFreeSchema.find({ statusSub: true, subExpire: { $lt: dayOne }, warningDay: { $nin: 1 } })
 
-        console.log('warningThreeDay', warningThreeDay)
-        console.log('warningOneDay', warningOneDay)
-        console.log('warningOneDayFreeSubscribe', warningOneDayFreeSubscribe)
+        // console.log('warningThreeDay', warningThreeDay)
+        // console.log('warningOneDay', warningOneDay)
+        // console.log('warningOneDayFreeSubscribe', warningOneDayFreeSubscribe)
 
         const updateWarningDay = async (subscription: ISubscription, warningDay: number) => {
-            await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
-            warningDay == 3 && await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`)
-            warningDay == 1 && await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания подписки!❗️`)
+            try {
+                warningDay == 3 && await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`)
+                warningDay == 1 && await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания подписки!❗️`)
+                await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
+            } catch (error) {
+                if (error instanceof Error && 'error_code' in error && 'description' in error) {
+                    const e = error as { error_code: number, description: string };
+                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user')) {
+                        await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
+                    } else {
+                        console.error('An unexpected error occurred:', e);
+                    }
+                } else {
+                    console.error('An unexpected error occurred:', error);
+                }
+            }
+
         };
         const updateFreeWarningDay = async (subscription: ISubscription, warningDay: number) => {
-            await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
-            await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания бесплатной подписки!❗️`)
+            try {
+                await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания бесплатной подписки!❗️`)
+                await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
+            } catch (error) {
+                if (error instanceof Error && 'error_code' in error && 'description' in error) {
+                    const e = error as { error_code: number, description: string };
+                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user')) {
+                        await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
+                    } else {
+                        console.error('An unexpected error occurred:', e);
+                    }
+                } else {
+                    console.error('An unexpected error occurred:', error);
+                }
+            }
+
         };
 
         warningThreeDay.forEach(async subscription => await updateWarningDay(subscription, 3));
@@ -51,22 +77,65 @@ export const checkStatusSubscribes = async () => {
         const getSubscribe = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: currentDay } })
         const getStatusSubscribeFree = await SubscriptionFreeSchema.find({ statusSub: true, subExpire: { $lt: currentDay } })
 
-        console.log('getSubscribe', getSubscribe)
-        console.log('getStatusSubscribeFree', getStatusSubscribeFree)
+        // console.log('getSubscribe', getSubscribe)
+        // console.log('getStatusSubscribeFree', getStatusSubscribeFree)
 
         const checkStatusSubscribe = async (subscription: ISubscription) => {
-            await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
-            await deleteClient(subscription.uuid, subscription.server)
-            await bot.api.sendMessage(subscription.userId, `Подписка кончилась!😢`)
+            try {
+                await bot.api.sendMessage(subscription.userId, `Подписка кончилась!😢`)
+                await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
+                await deleteClient(subscription.uuid, subscription.server)
+            } catch (error) {
+                if (error instanceof Error && 'error_code' in error && 'description' in error) {
+                    const e = error as { error_code: number, description: string };
+                    console.log(e.error_code)
+                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user')) {
+                        await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
+                        await deleteClient(subscription.uuid, subscription.server)
+                    } else {
+                        console.error('An unexpected error occurred:', e);
+                    }
+                } else {
+                    console.error('An unexpected error occurred:', error);
+                }
+            }
+
         }
         const checkStatusSubscribeFree = async (subscription: ISubscription) => {
-            await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
-            await deleteClient(subscription.uuid, subscription.server)
-            await bot.api.sendMessage(subscription.userId, `Бесплатная одписка кончилась!😢`)
+            try {
+                await bot.api.sendMessage(subscription.userId, `Бесплатная одписка кончилась!😢`)
+                await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
+                await deleteClient(subscription.uuid, subscription.server)
+            } catch (error) {
+                if (error instanceof Error && 'error_code' in error && 'description' in error) {
+                    const e = error as { error_code: number, description: string };
+                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user')) {
+                        await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
+                        await deleteClient(subscription.uuid, subscription.server)
+                    } else {
+                        console.error('An unexpected error occurred:', e);
+                    }
+                } else {
+                    console.error('An unexpected error occurred:', error);
+                }
+
+                // await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
+                // await deleteClient(subscription.uuid, subscription.server)
+            }
+
         }
 
-        getSubscribe.forEach(subscription => checkStatusSubscribe(subscription));
-        getStatusSubscribeFree.forEach(subscription => checkStatusSubscribeFree(subscription));
+        for (const subscription of getSubscribe) {
+            await checkStatusSubscribe(subscription);
+            await simulateAsyncOperation(1500);
+        }
+
+        for (const subscription of getStatusSubscribeFree) {
+            await checkStatusSubscribeFree(subscription);
+            await simulateAsyncOperation(1500);
+        }
+        // getSubscribe.forEach(subscription => checkStatusSubscribe(subscription));
+        // getStatusSubscribeFree.forEach(subscription => checkStatusSubscribeFree(subscription));
 
         setTimeout(checkStatusSubscribes, 3000)
     } catch (error) {
@@ -101,8 +170,13 @@ export const allFunctionCheck = () => {
     cron.schedule('0 3 * * *', () => {
         login();
     });
-
+    // cron.schedule('*/25 * * * *', async () => {
+    //     paySucceeded(851094841,'140');
+    //     await simulateAsyncOperation(1000)
+    //     paySucceeded(1011605575,'140');
+    // });
     checkWarningDay()
     checkStatusSubscribes()
     checkPaymentOneTime()
+    login()
 }

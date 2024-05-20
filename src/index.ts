@@ -1,6 +1,5 @@
 import express, { Express } from 'express'
 import mongoose from 'mongoose'
-import dotenv from 'dotenv'
 import cors from 'cors'
 import * as settings from "./settings"
 import { Bot } from 'grammy'
@@ -11,8 +10,12 @@ import { allFunctionCheck } from './service/check-service'
 
 
 
+
 export const bot = new Bot(settings.BOT_TOKEN)
-bot.api.config.use(autoRetry())
+bot.api.config.use(autoRetry({
+    maxRetryAttempts: 1,
+    maxDelaySeconds: 5, 
+}))
 
 
 let app: Express = express()
@@ -34,10 +37,3 @@ async function start() {
 }
 
 start()
-
-
-
-
-// freeSubscription(851094841)
-
-// addClient(432432432)

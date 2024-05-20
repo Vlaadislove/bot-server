@@ -37,13 +37,13 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
     while (!stopLoop) {
         try {
             response = await getPaymentApi(paymentIdClient);
-            console.log('Проверяем оплату:', paymentIdClient)
+            // console.log('Проверяем оплату:', paymentIdClient)
 
             if (!response) return { error: { message: 'Session not found' } }
 
             switch (response.status) {
                 case "succeeded": {
-                    console.log('Платеж в статусе: success')
+                    // console.log('Платеж в статусе: success')
                     const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient })
                     if (payment) {
                         payment.status = "succeeded"
@@ -58,7 +58,7 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
                     break
                 }
                 case "canceled": {
-                    console.log('Платеж в статусе: canceled')
+                    // console.log('Платеж в статусе: canceled')
                     const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient })
                     if (payment) {
                         payment.status = "canceled"
@@ -73,7 +73,7 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
                     break
                 }
                 case "pending": {
-                    console.log('Платеж в статусе: pending')
+                    // console.log('Платеж в статусе: pending')
                     await simulateAsyncOperation(1000)
                     break
                 }
@@ -177,8 +177,10 @@ export const paySucceeded = async (userId: number, price: string) => {
 
     if (!server.cookie) return null
 
-    const { config, uuid } = await addClient(userId, server.cookie, server.baseUrl)
-    if (!config) return null
+    const data = await addClient(userId, server.cookie, server.baseUrl)
+    if (!data) return null
+
+    const { config, uuid } = data
 
     const subscription = new SubscriptionSchema({
         userId,
@@ -186,8 +188,7 @@ export const paySucceeded = async (userId: number, price: string) => {
         uuid,
         server,
         statusSub: true,
-        subExpire: new Date(Date.now() + 15 * 60 * 1000),
-        // subExpire: new Date(Date.now() + day * 24 * 60 * 60 * 1000),
+        subExpire: new Date(Date.now() + day * 24 * 60 * 60 * 1000),
     })
 
     if (user && !user?.useFreeSub) {
@@ -210,6 +211,7 @@ export const paySucceeded = async (userId: number, price: string) => {
         parse_mode: 'HTML'
 
     })
+    console.log(`Подписка пользователем ${userId} куплена `)
 }
 
 
