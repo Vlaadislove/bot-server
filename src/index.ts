@@ -8,9 +8,6 @@ import paymentRoute from './routes/payment'
 import { allFunctionCheck } from './service/check-service'
 
 
-
-
-
 export const bot = new Bot(settings.BOT_TOKEN)
 bot.api.config.use(autoRetry({
     maxRetryAttempts: 1,

@@ -5,6 +5,7 @@ import { freeSubscription } from "../service/other-service";
 
 export const paymentCreate = async (req: Request, res: Response) => {
     const { userId, price } = req.body
+    
     const payment = await createPayment(userId, price)
 
     if (payment.url && payment.paymentId) {

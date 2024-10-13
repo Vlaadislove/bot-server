@@ -1,4 +1,4 @@
-import { IConfirmationType, YooCheckout} from '@a2seven/yoo-checkout';
+import { IConfirmationType, YooCheckout } from '@a2seven/yoo-checkout';
 import * as settings from "../settings"
 
 const checkout = new YooCheckout({
@@ -12,27 +12,26 @@ const checkout = new YooCheckout({
 
 interface ICreatePayload {
     amount: {
-        value: string; 
-        currency: string; 
+        value: string;
+        currency: string;
     };
     confirmation: {
         type: IConfirmationType;
-        return_url: string; 
+        return_url: string;
     };
-    capture: boolean; 
+    capture: boolean;
 }
 
+export const createPaymentApi = async (price: number, idempotenceKey: string) => {
 
-export const createPaymentApi = async (price:number, idempotenceKey:string) => {
-
-    const createPayload:ICreatePayload = {
+    const createPayload: ICreatePayload = {
         amount: {
             value: `${price}.00`,
             currency: 'RUB'
         },
         confirmation: {
             type: 'redirect',
-            return_url: 'https://t.me/vpn_test_vlad_bot'
+            return_url: `https://t.me/${settings.NAME_TG_BOT}`
         },
         capture: true
     };
@@ -45,8 +44,8 @@ export const createPaymentApi = async (price:number, idempotenceKey:string) => {
     }
 }
 
-export const getPaymentApi = async (paymentId:string) => {
-    
+export const getPaymentApi = async (paymentId: string) => {
+
     try {
         const payment = await checkout.getPayment(paymentId);
         return payment
@@ -55,24 +54,3 @@ export const getPaymentApi = async (paymentId:string) => {
     }
 
 }
-
-
-
-// export const capturePayment = async () => {
-
-//     const idempotenceKey = '26469hc4-a1f0-49db-807e-f0d67c2ed5a6'
-//     const paymentId = '2da78c08-000f-5000-a000-1ff1288a48e9'
-
-//     const capturePayload= {
-//         amount: {
-//             value: '2.00',
-//             currency: 'RUB'
-//         }
-//     };
-//     try {
-//         const payment = await checkout.capturePayment(paymentId, capturePayload, idempotenceKey);
-//         console.log(payment)
-//     } catch (error) {
-//         console.error(error);
-//     }
-// }

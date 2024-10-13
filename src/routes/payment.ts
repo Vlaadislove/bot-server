@@ -6,7 +6,7 @@ const router = Router()
 
 
 // http://localhost:3000/payment/
-router.post('/create', paymentCreate)
+router.post('/create-payment', paymentCreate)
 router.post('/free-subscription', freeSub)
 
 

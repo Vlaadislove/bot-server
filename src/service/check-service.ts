@@ -6,9 +6,12 @@ import { deleteClient, login } from "./xray-service"
 import PaymentSchema from "../models/payment-model"
 import { checkPayment, paySucceeded } from "./payment-service"
 import { simulateAsyncOperation } from "./other-service"
+import { InlineKeyboard } from 'grammy';
 
 
 export const checkWarningDay = async () => {
+    const connectInlineBoard = new InlineKeyboard()
+    .text('💳 Продлить подписку', 'connect')
     try {
         const dayOne = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
         const dayThree = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
@@ -23,8 +26,12 @@ export const checkWarningDay = async () => {
 
         const updateWarningDay = async (subscription: ISubscription, warningDay: number) => {
             try {
-                warningDay == 3 && await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`)
-                warningDay == 1 && await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания подписки!❗️`)
+                warningDay == 3 && await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`,{
+                    reply_markup: connectInlineBoard
+                })
+                warningDay == 1 && await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания подписки!❗️`, {
+                    reply_markup: connectInlineBoard
+                })
                 await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
             } catch (error) {
                 if (error instanceof Error && 'error_code' in error && 'description' in error) {
@@ -42,7 +49,9 @@ export const checkWarningDay = async () => {
         };
         const updateFreeWarningDay = async (subscription: ISubscription, warningDay: number) => {
             try {
-                await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания бесплатной подписки!❗️`)
+                await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания бесплатной подписки!❗️`,{
+                    reply_markup: connectInlineBoard
+                })
                 await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
             } catch (error) {
                 if (error instanceof Error && 'error_code' in error && 'description' in error) {
@@ -71,6 +80,8 @@ export const checkWarningDay = async () => {
 }
 
 export const checkStatusSubscribes = async () => {
+    const connectInlineBoard = new InlineKeyboard()
+    .text('💳 Продлить подписку', 'connect')
     try {
         const currentDay = new Date()
 
@@ -82,7 +93,9 @@ export const checkStatusSubscribes = async () => {
 
         const checkStatusSubscribe = async (subscription: ISubscription) => {
             try {
-                await bot.api.sendMessage(subscription.userId, `Подписка кончилась!😢`)
+                await bot.api.sendMessage(subscription.userId, `Подписка кончилась!😢`,{
+                    reply_markup: connectInlineBoard
+                })
                 await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
                 await deleteClient(subscription.uuid, subscription.server)
             } catch (error) {
@@ -103,7 +116,9 @@ export const checkStatusSubscribes = async () => {
         }
         const checkStatusSubscribeFree = async (subscription: ISubscription) => {
             try {
-                await bot.api.sendMessage(subscription.userId, `Бесплатная одписка кончилась!😢`)
+                await bot.api.sendMessage(subscription.userId, `Бесплатная подписка кончилась!😢`,{
+                    reply_markup: connectInlineBoard
+                })
                 await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
                 await deleteClient(subscription.uuid, subscription.server)
             } catch (error) {
@@ -170,11 +185,6 @@ export const allFunctionCheck = () => {
     cron.schedule('0 3 * * *', () => {
         login();
     });
-    // cron.schedule('*/25 * * * *', async () => {
-    //     paySucceeded(851094841,'140');
-    //     await simulateAsyncOperation(1000)
-    //     paySucceeded(1011605575,'140');
-    // });
     checkWarningDay()
     checkStatusSubscribes()
     checkPaymentOneTime()

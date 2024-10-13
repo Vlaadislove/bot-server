@@ -9,6 +9,7 @@ import { checkServer, simulateAsyncOperation } from './other-service';
 import SubscriptionFreeSchema from '../models/free-subscription-model';
 import UserSchema from '../models/user-model';
 import ServerSchema from '../models/server-model';
+import * as settings from "../settings"
 
 
 export const createPayment = async (userId: number, price: number) => {
@@ -37,13 +38,10 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
     while (!stopLoop) {
         try {
             response = await getPaymentApi(paymentIdClient);
-            // console.log('Проверяем оплату:', paymentIdClient)
-
             if (!response) return { error: { message: 'Session not found' } }
 
             switch (response.status) {
                 case "succeeded": {
-                    // console.log('Платеж в статусе: success')
                     const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient })
                     if (payment) {
                         payment.status = "succeeded"
@@ -58,7 +56,7 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
                     break
                 }
                 case "canceled": {
-                    // console.log('Платеж в статусе: canceled')
+
                     const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient })
                     if (payment) {
                         payment.status = "canceled"
@@ -73,7 +71,6 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
                     break
                 }
                 case "pending": {
-                    // console.log('Платеж в статусе: pending')
                     await simulateAsyncOperation(1000)
                     break
                 }
@@ -87,10 +84,14 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
 }
 
 export const paySucceeded = async (userId: number, price: string) => {
-    const day = price == '140' ? 30 : 90
+    const prices: { [key: string]: number } = {
+        '140': 30,
+        '390': 90
+    }
+    const days = prices[price]
     const user = await UserSchema.findOne({ userId })
 
-
+    //Добавление дополнительных дней для user который пригласил нового пользователя
     if (typeof user?.inviteId == 'number' && user.userId !== user.inviteId) {
         const inviteSubFree = await SubscriptionFreeSchema.findOne({ userId: user.inviteId, statusSub: true })
         const inviteSub = await SubscriptionSchema.findOne({ userId: user.inviteId, statusSub: true })
@@ -98,7 +99,7 @@ export const paySucceeded = async (userId: number, price: string) => {
         if (inviteSubFree) {
             const { userId, config, uuid, statusSub, subExpire, server } = inviteSubFree
 
-            const expirationDate = new Date(new Date(`${subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);
+            const expirationDate = new Date(new Date(`${subExpire}`).getTime() + settings.DAY_FOR_INVITE * 24 * 60 * 60 * 1000);
 
             const subscription = new SubscriptionSchema({
                 userId,
@@ -110,21 +111,25 @@ export const paySucceeded = async (userId: number, price: string) => {
             })
             inviteSubFree.statusSub = false
             user.inviteId = `${user.inviteId}`
-
-            await user.save()
-            await subscription.save()
-            await inviteSubFree.save()
-            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на <b>7</b> дней после оплаты @${user.username}!`, {
+            await Promise.all([
+                user.save(),
+                subscription.save(),
+                inviteSubFree.save()
+            ])
+            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на <b>${settings.DAY_FOR_INVITE}</b> дней после оплаты <b>${user.first_name}!</b>`, {
                 parse_mode: 'HTML'
             })
         } else if (inviteSub) {
-            const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + 7 * 24 * 60 * 60 * 1000);
+            const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + settings.DAY_FOR_INVITE * 24 * 60 * 60 * 1000);
             inviteSub.subExpire = expirationDate
             inviteSub.warningDay = []
             user.inviteId = `${user.inviteId}`
-            await user.save()
-            await inviteSub.save()
-            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на <b>7</b> дней после оплаты @${user.username}!`, {
+            await Promise.all([
+                user.save(),
+                inviteSub.save()
+            ])
+
+            await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на <b>${settings.DAY_FOR_INVITE}</b> дней после оплаты <b>${user.first_name}!</b>`, {
                 parse_mode: 'HTML'
             })
         }
@@ -137,7 +142,7 @@ export const paySucceeded = async (userId: number, price: string) => {
 
         const { userId, config, uuid, statusSub, subExpire, server } = subscriptionFreeCheck
 
-        const expirationDate = new Date(new Date(`${subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);
+        const expirationDate = new Date(new Date(`${subExpire}`).getTime() + days * 24 * 60 * 60 * 1000);
 
         const subscription = new SubscriptionSchema({
             userId,
@@ -148,9 +153,13 @@ export const paySucceeded = async (userId: number, price: string) => {
             subExpire: expirationDate,
         })
         subscriptionFreeCheck.statusSub = false
-        await subscription.save()
-        await subscriptionFreeCheck.save()
-        await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${day}</b> дней!`, {
+
+        await Promise.all([
+            subscription.save(),
+            subscriptionFreeCheck.save()
+        ])
+        
+        await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${days}</b> дней!`, {
             parse_mode: 'HTML'
         })
         await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, {
@@ -159,12 +168,12 @@ export const paySucceeded = async (userId: number, price: string) => {
         return
 
     } else if (subscriptionCheck) {
-        const expirationDate = new Date(new Date(`${subscriptionCheck.subExpire}`).getTime() + day * 24 * 60 * 60 * 1000);
+        const expirationDate = new Date(new Date(`${subscriptionCheck.subExpire}`).getTime() + days * 24 * 60 * 60 * 1000);
 
         subscriptionCheck.subExpire = expirationDate
         subscriptionCheck.warningDay = []
         await subscriptionCheck.save()
-        await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${day}</b> дней!`, {
+        await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${days}</b> дней!`, {
             parse_mode: 'HTML'
         })
         await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, {
@@ -173,11 +182,11 @@ export const paySucceeded = async (userId: number, price: string) => {
         return
     }
 
-    const server = await checkServer()
+    const server = await checkServer(userId)
 
-    if (!server.cookie) return null
+    if (!server?.cookie) return null
 
-    const data = await addClient(userId, server.cookie, server.baseUrl)
+    const data = await addClient(userId, server)
     if (!data) return null
 
     const { config, uuid } = data
@@ -188,7 +197,7 @@ export const paySucceeded = async (userId: number, price: string) => {
         uuid,
         server,
         statusSub: true,
-        subExpire: new Date(Date.now() + day * 24 * 60 * 60 * 1000),
+        subExpire: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
     })
 
     if (user && !user?.useFreeSub) {
@@ -211,7 +220,6 @@ export const paySucceeded = async (userId: number, price: string) => {
         parse_mode: 'HTML'
 
     })
-    console.log(`Подписка пользователем ${userId} куплена `)
 }
 
 

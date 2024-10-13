@@ -13,14 +13,10 @@ interface IClientData {
     settings: string;
 }
 
-// const instance = axios.create({
-//     baseURL: 'http://95.164.7.217:5555',
-// });
-
-
 export const loginApi = async (userData: IUserData, baseUrl: string) => {
     try {
         const response = await axios.post(`${baseUrl}/login`, querystring.stringify(userData))
+        
         return response
     } catch (error) {
         console.log(error)
@@ -41,7 +37,6 @@ export const deleteClientApi = async (uuid: string, cookie: string, baseUrl: str
     try {
         
         const response = await axios.post(`${baseUrl}/panel/api/inbounds/1/delClient/${uuid}`,null, { headers: { 'Cookie': cookie } })
-        // console.log(response.data)
         return response
     } catch (error) {
         console.log(error)
