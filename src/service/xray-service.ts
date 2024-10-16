@@ -43,7 +43,7 @@ export const addClient = async (tgId: number, server: IServer): Promise<AddClien
         const response = await addClientApi(data, server.cookie, server.baseUrl)
         if (!response) throw new Error('Ошибка добавления клиента')
         if (response.data.success) {
-            const config: string = `vless://${uuid}@${server.ip}?type=tcp&security=reality&pbk=${server.publickKey}&fp=firefox&sni=yahoo.com&sid=${server.sidId}&spx=%2F&flow=xtls-rprx-vision#Freinds-${tgId}`
+            const config: string = `vless://${uuid}@${server.ip}?type=tcp&security=reality&pbk=${server.publickKey}&fp=firefox&sni=nu.nl&sid=${server.sidId}&spx=%2F&flow=xtls-rprx-vision#VPNinja-${tgId}`
             return { config, uuid }
         } else {
             console.log('Не удалось отправить конфиг', response.data.success)
