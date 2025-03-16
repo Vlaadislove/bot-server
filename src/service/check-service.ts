@@ -11,7 +11,7 @@ import { InlineKeyboard } from 'grammy';
 
 export const checkWarningDay = async () => {
     const connectInlineBoard = new InlineKeyboard()
-    .text('💳 Продлить подписку', 'connect')
+        .text('💳 Продлить подписку', 'connect')
     try {
         const dayOne = new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)
         const dayThree = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
@@ -26,7 +26,7 @@ export const checkWarningDay = async () => {
 
         const updateWarningDay = async (subscription: ISubscription, warningDay: number) => {
             try {
-                warningDay == 3 && await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`,{
+                warningDay == 3 && await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`, {
                     reply_markup: connectInlineBoard
                 })
                 warningDay == 1 && await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания подписки!❗️`, {
@@ -36,7 +36,7 @@ export const checkWarningDay = async () => {
             } catch (error) {
                 if (error instanceof Error && 'error_code' in error && 'description' in error) {
                     const e = error as { error_code: number, description: string };
-                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user')) {
+                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated')) {
                         await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
                     } else {
                         console.error('An unexpected error occurred:', e);
@@ -49,14 +49,14 @@ export const checkWarningDay = async () => {
         };
         const updateFreeWarningDay = async (subscription: ISubscription, warningDay: number) => {
             try {
-                await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания бесплатной подписки!❗️`,{
+                await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания бесплатной подписки!❗️`, {
                     reply_markup: connectInlineBoard
                 })
                 await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
             } catch (error) {
                 if (error instanceof Error && 'error_code' in error && 'description' in error) {
                     const e = error as { error_code: number, description: string };
-                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user')) {
+                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated')) {
                         await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
                     } else {
                         console.error('An unexpected error occurred:', e);
@@ -81,7 +81,7 @@ export const checkWarningDay = async () => {
 
 export const checkStatusSubscribes = async () => {
     const connectInlineBoard = new InlineKeyboard()
-    .text('💳 Продлить подписку', 'connect')
+        .text('💳 Продлить подписку', 'connect')
     try {
         const currentDay = new Date()
 
@@ -93,7 +93,7 @@ export const checkStatusSubscribes = async () => {
 
         const checkStatusSubscribe = async (subscription: ISubscription) => {
             try {
-                await bot.api.sendMessage(subscription.userId, `Подписка кончилась!😢`,{
+                await bot.api.sendMessage(subscription.userId, `Подписка кончилась!😢`, {
                     reply_markup: connectInlineBoard
                 })
                 await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
@@ -102,7 +102,7 @@ export const checkStatusSubscribes = async () => {
                 if (error instanceof Error && 'error_code' in error && 'description' in error) {
                     const e = error as { error_code: number, description: string };
                     console.log(e.error_code)
-                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user')) {
+                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated')) {
                         await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
                         await deleteClient(subscription.uuid, subscription.server)
                     } else {
@@ -116,7 +116,7 @@ export const checkStatusSubscribes = async () => {
         }
         const checkStatusSubscribeFree = async (subscription: ISubscription) => {
             try {
-                await bot.api.sendMessage(subscription.userId, `Бесплатная подписка кончилась!😢`,{
+                await bot.api.sendMessage(subscription.userId, `Бесплатная подписка кончилась!😢`, {
                     reply_markup: connectInlineBoard
                 })
                 await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
@@ -124,7 +124,7 @@ export const checkStatusSubscribes = async () => {
             } catch (error) {
                 if (error instanceof Error && 'error_code' in error && 'description' in error) {
                     const e = error as { error_code: number, description: string };
-                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user')) {
+                    if (e.error_code === 403 && e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated')) {
                         await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
                         await deleteClient(subscription.uuid, subscription.server)
                     } else {
@@ -157,8 +157,6 @@ export const checkStatusSubscribes = async () => {
         console.log(error)
         setTimeout(checkStatusSubscribes, 3000)
     }
-
-
 }
 
 export const checkPaymentOneTime = async () => {
@@ -182,7 +180,7 @@ export const checkPaymentOneTime = async () => {
 }
 
 export const allFunctionCheck = () => {
-    cron.schedule('0 3 * * *', () => {
+    cron.schedule('0 */6 * * *', () => {
         login();
     });
     checkWarningDay()

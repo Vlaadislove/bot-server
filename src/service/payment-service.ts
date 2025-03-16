@@ -185,7 +185,7 @@ export const paySucceeded = async (userId: number, price: string) => {
     const server = await checkServer(userId)
 
     if (!server?.cookie) return null
-
+    //TODO Добавить логику что если у человека была подписка, то делать тот же uuid как и в прошлой подписке что бы после оплаты он мог дальше пользоваться спокойно
     const data = await addClient(userId, server)
     if (!data) return null
 

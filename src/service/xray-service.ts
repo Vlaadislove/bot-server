@@ -10,6 +10,7 @@ interface AddClientResponse {
 
 export const login = async () => {
     try {
+      //TODO сделать что б куки спрашиало у серверов у который status: true
         const servers = await ServerSchema.find()
         for (let i = 0; i < servers.length; i++) {
             const userData = {
