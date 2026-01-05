@@ -5,10 +5,7 @@ const checkout = new YooCheckout({
     shopId: settings.YM_SHOP_IP,
     secretKey: settings.YM_SECRET_KEY
 });
-// const checkout = new YooCheckout({
-//     shopId: '361023',
-//     secretKey: 'live__tSTCEF8qA-1KGR8kp5WtRsvm3PwbfhwgueiOEPpNsw'
-// });
+
 
 interface ICreatePayload {
     amount: {

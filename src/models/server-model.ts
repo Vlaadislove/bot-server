@@ -5,7 +5,7 @@ export interface IServer extends Document {
 	username: string
 	status: boolean
 	password: string
-	loginSecret: string
+	twoFactorCode: string
 	sidId: string
 	ip: string
 	quantityUsers: number
@@ -32,7 +32,7 @@ export const ServerSchema = new mongoose.Schema(
 			type: String,
 			required: true,
 		},
-		loginSecret: {
+		twoFactorCode: {
 			type: String,
 			required: true,
 		},
