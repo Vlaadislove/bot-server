@@ -28,6 +28,10 @@ export const login = async () => {
 
       if (!response) throw new Error('Ошбика получения login')
       const cookie = response.headers['set-cookie'] && response.headers['set-cookie'].pop();
+      if (!cookie) {
+        throw new Error('Not found cookie');
+      }
+
       await ServerSchema.findByIdAndUpdate(servers[i].id, {
         $set: { cookie: cookie },
       })
