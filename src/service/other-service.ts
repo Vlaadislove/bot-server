@@ -87,3 +87,16 @@ export const checkServer = async (userId:number) => {
 	return result;
 };
 
+type NormalizedWebhook = { paymentId: string; status: string;};
+
+export const normalizeWebhook = (payload: any): NormalizedWebhook | null => {
+  const obj = payload?.object;
+  const paymentId = obj?.id;
+  const status = obj?.status;
+
+
+  if (typeof paymentId !== 'string' || typeof status !== 'string') {
+    return null;
+  }
+  return { paymentId, status};
+};

@@ -5,7 +5,7 @@ import SubscriptionSchema from '../models/subscription-model';
 import { addClient } from './xray-service';
 import { bot } from '../index'
 import { InlineKeyboard } from 'grammy';
-import { checkServer, simulateAsyncOperation } from './other-service';
+import { checkServer, normalizeWebhook, simulateAsyncOperation } from './other-service';
 import SubscriptionFreeSchema from '../models/free-subscription-model';
 import UserSchema from '../models/user-model';
 import ServerSchema from '../models/server-model';
@@ -37,59 +37,98 @@ export const createPayment = async (userId: number, price: number) => {
 }
 
 export const checkPayment = async (paymentIdClient: string, userId: number, price: string) => {
-  let response;
-  let stopLoop = false;
+  try {
+    const response = await getPaymentApi(paymentIdClient);
+    if (!response) return { error: { message: 'Session not found' } };
 
-  while (!stopLoop) {
-    try {
-      response = await getPaymentApi(paymentIdClient);
-      if (!response) return { error: { message: 'Session not found' } }
-
-      switch (response.status) {
-        case "succeeded": {
-          const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient })
-          if (payment) {
-            payment.status = "succeeded"
-            await payment.save()
-          } else {
-            console.log('Платеж не найдет')
-            stopLoop = true
-            break
-          }
-          paySucceeded(userId, price)
-          stopLoop = true
-          break
+    switch (response.status) {
+      case 'succeeded': {
+        const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient });
+        if (payment) {
+          payment.status = 'succeeded';
+          payment.processed = true;
+          await payment.save();
+        } else {
+          console.log('Платеж не найден');
+          break;
         }
-        case "canceled": {
-
-          const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient })
-          if (payment) {
-            payment.status = "canceled"
-            await payment.save()
-          } else {
-            console.log('Платеж не найден')
-            stopLoop = true
-            break
-          }
-          console.log(Date())
-          stopLoop = true
-          break
-        }
-        case "pending": {
-          await simulateAsyncOperation(1000)
-          break
-        }
-        default:
-          throw new Error(`Неизвестный статус платежа: ${response.status}`);
+        await paySucceeded(userId, price);
+        break;
       }
-    } catch (error) {
-      console.error('checkPayment error:', error);
-      stopLoop = true; // не зацикливаемся при ошибках
+      case 'canceled': {
+        const payment = await PaymentSchema.findOne({ paymentId: paymentIdClient });
+        if (payment) {
+          payment.status = 'canceled';
+          await payment.save();
+        } else {
+          console.log('Платеж не найден');
+        }
+        break;
+      }
+      case 'pending': {
+        // ничего не делаем, просто выходим
+        break;
+      }
+      default:
+        throw new Error(`Неизвестный статус платежа: ${response.status}`);
     }
+  } catch (error) {
+    console.error('checkPayment error:', error);
+  }
+};
+
+
+export const handlePaymentWebhook = async (payload: any) => {
+  console.log('payload', payload )
+  try {
+
+    const normalized = normalizeWebhook(payload);
+    if (!normalized) {
+      console.log('Ошибка валидации');
+      return { error: { message: 'invalid payload' } };
+    }
+
+    const { paymentId, status} = normalized;
+    const payment = await PaymentSchema.findOne({ paymentId });
+    console.log('payment', payment)
+    if (!payment) {
+      return { error: { message: 'payment not found' } };
+    }
+
+    // идемпотентность: если уже успешно и обработано, выходим
+    if (payment.status === 'succeeded' && payment.processed) {
+      return { ok: true };
+    }
+
+    payment.status = status;
+    await payment.save();
+
+    if (status === 'canceled') {
+      payment.status = 'canceled';
+      payment.processed = true;
+      await payment.save();
+      return { ok: true };
+    }
+
+    if (status === 'succeeded') {
+      await paySucceeded(
+        Number(payment.userId),
+        String(payment.price)
+      );
+      console.log('User create')
+      payment.processed = true;
+      await payment.save();
+    }
+
+    return { ok: true };
+  } catch (error) {
+    console.error('handlePaymentWebhook error:', error);
+    return { error: { message: 'handlePaymentWebhook failed' } };
   }
 }
 
 export const paySucceeded = async (userId: number, price: string) => {
+
   try {
     const prices: { [key: string]: number } = {
       '170': 30,
@@ -190,7 +229,7 @@ export const paySucceeded = async (userId: number, price: string) => {
     }
 
     const server = await checkServer(userId)
-
+    console.log(server?.cookie)
     if (!server?.cookie) return null
     //TODO Добавить логику что если у человека была подписка, то делать тот же uuid как и в прошлой подписке что бы после оплаты он мог дальше пользоваться спокойно
     const data = await addClient(userId, server)

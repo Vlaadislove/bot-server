@@ -28,6 +28,10 @@ export const PaymentSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
+        processed: {
+            type: Boolean,
+            default: false,
+        },
         expiresAt: {
             type: Date,
             default: () => {

@@ -4,7 +4,7 @@ import { bot } from '../index'
 import SubscriptionFreeSchema from "../models/free-subscription-model"
 import { deleteClient, login } from "./xray-service"
 import PaymentSchema from "../models/payment-model"
-import { checkPayment, paySucceeded } from "./payment-service"
+import { checkPayment } from "./payment-service"
 import { simulateAsyncOperation } from "./other-service"
 import { InlineKeyboard } from 'grammy';
 
@@ -167,6 +167,7 @@ export const checkPaymentOneTime = async () => {
   for (let attempts = 1; attempts <= maxAttempts; attempts++) {
     try {
       const payments = await PaymentSchema.find({ status: 'pending' });
+
       for (const p of payments) {
         await checkPayment(p.paymentId, p.userId, p.price);
         await simulateAsyncOperation(1000);
