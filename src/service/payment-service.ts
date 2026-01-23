@@ -66,7 +66,6 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
         break;
       }
       case 'pending': {
-        // ничего не делаем, просто выходим
         break;
       }
       default:
@@ -79,7 +78,7 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
 
 
 export const handlePaymentWebhook = async (payload: any) => {
-  console.log('payload', payload )
+  console.log('payload', payload)
   try {
 
     const normalized = normalizeWebhook(payload);
@@ -88,7 +87,7 @@ export const handlePaymentWebhook = async (payload: any) => {
       return { error: { message: 'invalid payload' } };
     }
 
-    const { paymentId, status} = normalized;
+    const { paymentId, status } = normalized;
     const payment = await PaymentSchema.findOne({ paymentId });
     console.log('payment', payment)
     if (!payment) {
@@ -96,12 +95,7 @@ export const handlePaymentWebhook = async (payload: any) => {
     }
 
     // идемпотентность: если уже успешно и обработано, выходим
-    if (payment.status === 'succeeded' && payment.processed) {
-      return { ok: true };
-    }
-
-    payment.status = status;
-    await payment.save();
+    if (payment.processed) return { ok: true };
 
     if (status === 'canceled') {
       payment.status = 'canceled';
@@ -111,13 +105,11 @@ export const handlePaymentWebhook = async (payload: any) => {
     }
 
     if (status === 'succeeded') {
-      await paySucceeded(
-        Number(payment.userId),
-        String(payment.price)
-      );
-      console.log('User create')
+      await paySucceeded(Number(payment.userId), String(payment.price));
+      payment.status = 'succeeded';
       payment.processed = true;
       await payment.save();
+      return { ok: true };
     }
 
     return { ok: true };
