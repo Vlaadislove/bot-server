@@ -78,7 +78,6 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
 
 
 export const handlePaymentWebhook = async (payload: any) => {
-  console.log('payload', payload)
   try {
 
     const normalized = normalizeWebhook(payload);
@@ -89,7 +88,6 @@ export const handlePaymentWebhook = async (payload: any) => {
 
     const { paymentId, status } = normalized;
     const payment = await PaymentSchema.findOne({ paymentId });
-    console.log('payment', payment)
     if (!payment) {
       return { error: { message: 'payment not found' } };
     }
@@ -221,7 +219,7 @@ export const paySucceeded = async (userId: number, price: string) => {
     }
 
     const server = await checkServer(userId)
-    console.log(server?.cookie)
+
     if (!server?.cookie) return null
     //TODO Добавить логику что если у человека была подписка, то делать тот же uuid как и в прошлой подписке что бы после оплаты он мог дальше пользоваться спокойно
     const data = await addClient(userId, server)

@@ -28,7 +28,6 @@ export const paymentWebhook = async (req: Request, res: Response) => {
         if (result?.error) {
             return res.status(400).json(result)
         }
-        console.log('все удачно')
         return res.status(200).json({ status: 'ok' })
     } catch (error) {
         console.error('paymentWebhook error:', error)
