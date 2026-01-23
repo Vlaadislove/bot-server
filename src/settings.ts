@@ -10,7 +10,7 @@ export const YM_SHOP_IP = process.env.YM_SHOP_IP || ' '
 export const YM_SECRET_KEY = process.env.YM_SECRET_KEY || ' '
 
 export const FREE_DAY = Number(process.env.FREE_DAY) || 0
-export const DAY_FOR_INVITE = Number(process.env.FREE_DAY) || 0
+export const DAY_FOR_INVITE = Number(process.env.DAY_FOR_INVITE) || 0
 export const MAX_USERS_ON_SERVER = Number(process.env.MAX_USERS_ON_SERVER) || 0
 
 export const NAME_TG_BOT = process.env.NAME_TG_BOT || ' '
