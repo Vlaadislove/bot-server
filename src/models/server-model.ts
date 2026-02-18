@@ -11,7 +11,8 @@ export interface IServer extends Document {
 	quantityUsers: number
 	baseUrl: string
 	cookie: string
-    publickKey:string
+  publickKey:string
+  sni: string
 }
 
 export const ServerSchema = new mongoose.Schema(
@@ -60,6 +61,10 @@ export const ServerSchema = new mongoose.Schema(
 			type: String,
 			required: true,
 		},
+    sni: {
+      type: String,
+      required: true,
+    },
 	},
 	{ timestamps: true, collection: "server" }
 );
