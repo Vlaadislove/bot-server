@@ -147,7 +147,7 @@ export const paySucceeded = async (userId: number, price: string) => {
       const expirationDate = new Date(new Date(`${activeSub.subExpire}`).getTime() + days * 24 * 60 * 60 * 1000)
       activeSub.subExpire = expirationDate
       activeSub.warningDay = []
-      if (activeSub.type === 'free') activeSub.type = 'paid'
+      if (activeSub.type !== 'paid') activeSub.type = 'paid'
       await activeSub.save()
 
       await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${days}</b> дней!`, { parse_mode: 'HTML' })
@@ -204,6 +204,11 @@ export const activatePromo = async (userId: number, code: string) => {
     promo.usedBy = userId
     promo.usedAt = new Date()
     await promo.save()
+
+    if (!user.useFreeSub) {
+      user.useFreeSub = true
+      await user.save()
+    }
 
     const friendExpire = new Date()
     if (promo.daysValid) {
