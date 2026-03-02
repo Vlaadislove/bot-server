@@ -22,8 +22,8 @@ export const freeSub = async (req: Request, res: Response) =>{
 }
 
 export const promoGenerate = async (req: Request, res: Response) => {
-    const { userId, count } = req.body
-    const result = await generatePromoCodes(Number(userId), Number(count) || 1)
+    const { userId, count, days } = req.body
+    const result = await generatePromoCodes(Number(userId), Number(count) || 1, days ? Number(days) : undefined)
     if ('error' in result) return res.status(403).json(result)
     return res.status(200).json(result)
 }

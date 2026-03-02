@@ -206,7 +206,11 @@ export const activatePromo = async (userId: number, code: string) => {
     await promo.save()
 
     const friendExpire = new Date()
-    friendExpire.setFullYear(friendExpire.getFullYear() + 100)
+    if (promo.daysValid) {
+      friendExpire.setDate(friendExpire.getDate() + promo.daysValid)
+    } else {
+      friendExpire.setFullYear(friendExpire.getFullYear() + 100)
+    }
 
     const activeSub = await SubscriptionSchema.findOne({ userId, statusSub: true })
     if (activeSub) {
@@ -247,7 +251,7 @@ export const activatePromo = async (userId: number, code: string) => {
 }
 
 
-export const generatePromoCodes = async (userId: number, count: number) => {
+export const generatePromoCodes = async (userId: number, count: number, days?: number) => {
   try {
     if (!settings.ADMIN_USER_ID || userId !== settings.ADMIN_USER_ID) {
       return { error: 'Доступ запрещён' }
@@ -258,7 +262,7 @@ export const generatePromoCodes = async (userId: number, count: number) => {
 
     for (let i = 0; i < safeCount; i++) {
       const code = 'FRIEND-' + uuidv4().replace(/-/g, '').slice(0, 8).toUpperCase()
-      await PromoSchema.create({ code, isUsed: false })
+      await PromoSchema.create({ code, isUsed: false, ...(days ? { daysValid: days } : {}) })
       codes.push(code)
     }
 

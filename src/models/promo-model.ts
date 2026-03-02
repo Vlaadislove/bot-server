@@ -5,6 +5,7 @@ export interface IPromo extends Document {
     isUsed: boolean;
     usedBy?: number;
     usedAt?: Date;
+    daysValid?: number;
 }
 
 const PromoSchema = new mongoose.Schema(
@@ -13,6 +14,7 @@ const PromoSchema = new mongoose.Schema(
         isUsed: { type: Boolean, default: false },
         usedBy: { type: Number },
         usedAt: { type: Date },
+        daysValid: { type: Number },
     },
     { timestamps: true, collection: "promo" }
 );
