@@ -245,3 +245,26 @@ export const activatePromo = async (userId: number, code: string) => {
     return { error: 'Внутренняя ошибка' }
   }
 }
+
+
+export const generatePromoCodes = async (userId: number, count: number) => {
+  try {
+    if (!settings.ADMIN_USER_ID || userId !== settings.ADMIN_USER_ID) {
+      return { error: 'Доступ запрещён' }
+    }
+
+    const safeCount = Math.min(Math.max(1, count), 10)
+    const codes: string[] = []
+
+    for (let i = 0; i < safeCount; i++) {
+      const code = 'FRIEND-' + uuidv4().replace(/-/g, '').slice(0, 8).toUpperCase()
+      await PromoSchema.create({ code, isUsed: false })
+      codes.push(code)
+    }
+
+    return { codes }
+  } catch (error) {
+    console.error('generatePromoCodes error:', error)
+    return { error: 'Внутренняя ошибка' }
+  }
+}

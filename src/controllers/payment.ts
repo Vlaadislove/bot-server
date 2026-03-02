@@ -1,5 +1,5 @@
 import { Response, Request } from "express";
-import { activatePromo, checkPayment, createPayment, handlePaymentWebhook } from "../service/payment-service";
+import { activatePromo, checkPayment, createPayment, generatePromoCodes, handlePaymentWebhook } from "../service/payment-service";
 import { freeSubscription } from "../service/other-service";
 
 
@@ -19,6 +19,13 @@ export const freeSub = async (req: Request, res: Response) =>{
     const data = await freeSubscription(userId)
     if(data) res.json(data)
     else res.status(201).json({status:true, message:'Успешная выдача бесплатной подписки'})
+}
+
+export const promoGenerate = async (req: Request, res: Response) => {
+    const { userId, count } = req.body
+    const result = await generatePromoCodes(Number(userId), Number(count) || 1)
+    if ('error' in result) return res.status(403).json(result)
+    return res.status(200).json(result)
 }
 
 export const promoActivate = async (req: Request, res: Response) => {

@@ -20,5 +20,7 @@ export const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000'
 export const PRICE_30_DAYS = Number(process.env.PRICE_30_DAYS) || 170
 export const PRICE_90_DAYS = Number(process.env.PRICE_90_DAYS) || 480
 
+export const ADMIN_USER_ID = Number(process.env.ADMIN_USER_ID) || 0
+
 
 
