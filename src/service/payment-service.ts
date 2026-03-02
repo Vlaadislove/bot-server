@@ -187,11 +187,11 @@ export const paySucceeded = async (userId: number, price: string) => {
     const subUrl = `${settings.SERVER_URL}/subscription/${user.subToken}`
     const instructionBoard = new InlineKeyboard().text('🗂 Инструкция', 'instructions')
 
-    await bot.api.sendMessage(userId, `Ваша ссылка на подписку (добавьте в v2ray / Hiddify):\n<code>${subUrl}</code>`, {
+    await bot.api.sendMessage(userId, `<code>${subUrl}</code>`, { parse_mode: 'HTML' })
+    await bot.api.sendMessage(userId, `Скопируйте ссылку выше и вставьте в приложение (v2ray, Hiddify и др.) — она понадобится для подключения к VPN.\n\n<b>Спасибо что выбрали VPNinja</b> ❤️`, {
       parse_mode: 'HTML',
       reply_markup: instructionBoard,
     })
-    await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, { parse_mode: 'HTML' })
   } catch (error) {
     console.error('paySucceeded error:', error)
     return null

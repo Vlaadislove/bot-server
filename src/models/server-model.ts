@@ -2,6 +2,7 @@ import mongoose, { Document } from "mongoose";
 
 export interface IServer extends Document {
 	serverName: string
+	flag: string
 	username: string
 	status: boolean
 	password: string
@@ -20,6 +21,10 @@ export const ServerSchema = new mongoose.Schema(
 		serverName: {
 			type: String,
 			required: true,
+		},
+		flag: {
+			type: String,
+			default: '',
 		},
 		username: {
 			type: String,

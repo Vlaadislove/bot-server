@@ -5,6 +5,7 @@ import * as settings from "./settings"
 import { Bot } from 'grammy'
 import { autoRetry } from "@grammyjs/auto-retry";
 import paymentRoute from './routes/payment'
+import subscriptionRoute from './routes/subscription'
 import { allFunctionCheck } from './service/check-service'
 
 
@@ -21,6 +22,7 @@ app.use(cors());
 
 
 app.use('/payment', paymentRoute)
+app.use('/subscription', subscriptionRoute)
 
 
 async function start() {

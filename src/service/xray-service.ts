@@ -48,7 +48,8 @@ export const addClient = async (tgId: number, uuid: string, server: IServer): Pr
     const response = await addClientApi(data, server.cookie, server.baseUrl)
     if (!response) throw new Error('Ошибка добавления клиента')
     if (response.data.success) {
-      const config: string = `vless://${uuid}@${server.ip}?type=tcp&encryption=none&security=reality&pbk=${server.publickKey}&fp=random&sni=${server.sni}&sid=${server.sidId}&spx=%2F&flow=xtls-rprx-vision#VPNinja-${tgId}`
+      const label = encodeURIComponent(`${server.flag} ${server.serverName}`.trim())
+      const config: string = `vless://${uuid}@${server.ip}?type=tcp&encryption=none&security=reality&pbk=${server.publickKey}&fp=random&sni=${server.sni}&sid=${server.sidId}&spx=%2F&flow=xtls-rprx-vision#${label}`
       return { config }
     } else {
       console.log('Не удалось отправить конфиг', response.data.success)

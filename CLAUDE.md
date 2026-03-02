@@ -79,7 +79,7 @@ src/
 | `subscription` | Платные подписки: `userId`, `uuid`, `config` (VLESS), `statusSub`, `subExpire`, `server` |
 | `subscription-free` | Бесплатные триалы (та же структура, другая коллекция) |
 | `payment` | Платёжные записи: `paymentId`, `idempotenceKeyClient`, `processed`, TTL 90 дней |
-| `server` | X-ray серверы: `baseUrl`, `cookie` (сессия), `quantityUsers`, `publickKey`, `sni`, `sidId` |
+| `server` | X-ray серверы: `baseUrl`, `cookie` (сессия), `quantityUsers`, `publickKey`, `sni`, `sidId`, `flag` (emoji) |
 
 ## Переменные окружения (.env)
 
@@ -101,9 +101,10 @@ SUPPORT_NAME=...       # @username поддержки
 ```
 vless://{uuid}@{server.ip}?type=tcp&encryption=none&security=reality
   &pbk={server.publickKey}&fp=random&sni={server.sni}&sid={server.sidId}
-  &spx=%2F&flow=xtls-rprx-vision#VPNinja-{tgId}
+  &spx=%2F&flow=xtls-rprx-vision#{encodeURIComponent(server.flag + " " + server.serverName)}
 ```
 
+Имя конфига (`#...`) берётся из полей сервера: `flag` (emoji) + `serverName`. Пример: `🇩🇪 DE-1`.
 Inbound ID в X-ray захардкожен как `1` в `deleteClientApi` и в `addClient`.
 
 ## Известные проблемы и ограничения
