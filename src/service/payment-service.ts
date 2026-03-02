@@ -5,8 +5,7 @@ import SubscriptionSchema from '../models/subscription-model';
 import { addClient } from './xray-service';
 import { bot } from '../index'
 import { InlineKeyboard } from 'grammy';
-import { checkServer, normalizeWebhook, simulateAsyncOperation } from './other-service';
-import SubscriptionFreeSchema from '../models/free-subscription-model';
+import { checkAllServers, ensureUserTokens, normalizeWebhook, simulateAsyncOperation } from './other-service';
 import UserSchema from '../models/user-model';
 import ServerSchema from '../models/server-model';
 import * as settings from "../settings"
@@ -79,7 +78,6 @@ export const checkPayment = async (paymentIdClient: string, userId: number, pric
 
 export const handlePaymentWebhook = async (payload: any) => {
   try {
-
     const normalized = normalizeWebhook(payload);
     if (!normalized) {
       console.log('Ошибка валидации');
@@ -92,7 +90,6 @@ export const handlePaymentWebhook = async (payload: any) => {
       return { error: { message: 'payment not found' } };
     }
 
-    // идемпотентность: если уже успешно и обработано, выходим
     if (payment.processed) return { ok: true };
 
     if (status === 'canceled') {
@@ -118,149 +115,85 @@ export const handlePaymentWebhook = async (payload: any) => {
 }
 
 export const paySucceeded = async (userId: number, price: string) => {
-
   try {
     const prices: { [key: string]: number } = {
-      '170': 30,
-      '480': 90
+      [String(settings.PRICE_30_DAYS)]: 30,
+      [String(settings.PRICE_90_DAYS)]: 90,
     }
     const days = prices[price]
-    const user = await UserSchema.findOne({ userId })
+    const user = await ensureUserTokens(userId)
+    if (!user) return null
 
-    //Добавление дополнительных дней для user который пригласил нового пользователя
-    if (typeof user?.inviteId == 'number' && user.userId !== user.inviteId) {
-      const inviteSubFree = await SubscriptionFreeSchema.findOne({ userId: user.inviteId, statusSub: true })
+    // --- Реферальная логика ---
+    if (typeof user.inviteId == 'number' && user.userId !== user.inviteId) {
       const inviteSub = await SubscriptionSchema.findOne({ userId: user.inviteId, statusSub: true })
 
-      if (inviteSubFree) {
-        const { userId, config, uuid, statusSub, subExpire, server } = inviteSubFree
-
-        const expirationDate = new Date(new Date(`${subExpire}`).getTime() + settings.DAY_FOR_INVITE * 24 * 60 * 60 * 1000);
-
-        const subscription = new SubscriptionSchema({
-          userId,
-          config,
-          server,
-          uuid,
-          statusSub,
-          subExpire: expirationDate,
-        })
-        inviteSubFree.statusSub = false
-        user.inviteId = `${user.inviteId}`
-        await Promise.all([
-          user.save(),
-          subscription.save(),
-          inviteSubFree.save()
-        ])
-        await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на <b>${settings.DAY_FOR_INVITE}</b> дней после оплаты <b>${user.first_name}!</b>`, {
-          parse_mode: 'HTML'
-        })
-      } else if (inviteSub) {
-        const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + settings.DAY_FOR_INVITE * 24 * 60 * 60 * 1000);
+      if (inviteSub) {
+        const expirationDate = new Date(new Date(`${inviteSub.subExpire}`).getTime() + settings.DAY_FOR_INVITE * 24 * 60 * 60 * 1000)
         inviteSub.subExpire = expirationDate
         inviteSub.warningDay = []
         user.inviteId = `${user.inviteId}`
-        await Promise.all([
-          user.save(),
-          inviteSub.save()
-        ])
+        await Promise.all([user.save(), inviteSub.save()])
 
-        await bot.api.sendMessage(parseInt(user.inviteId), `Ваша подписка продлена на <b>${settings.DAY_FOR_INVITE}</b> дней после оплаты <b>${user.first_name}!</b>`, {
+        await bot.api.sendMessage(parseInt(user.inviteId as string), `Ваша подписка продлена на <b>${settings.DAY_FOR_INVITE}</b> дней после оплаты <b>${user.first_name}!</b>`, {
           parse_mode: 'HTML'
         })
       }
     }
 
-    const subscriptionFreeCheck = await SubscriptionFreeSchema.findOne({ userId, statusSub: true })
-    const subscriptionCheck = await SubscriptionSchema.findOne({ userId, statusSub: true })
+    // --- Продление / апгрейд существующей подписки ---
+    const activeSub = await SubscriptionSchema.findOne({ userId, statusSub: true })
+    if (activeSub) {
+      const expirationDate = new Date(new Date(`${activeSub.subExpire}`).getTime() + days * 24 * 60 * 60 * 1000)
+      activeSub.subExpire = expirationDate
+      activeSub.warningDay = []
+      if (activeSub.type === 'free') activeSub.type = 'paid'
+      await activeSub.save()
 
-    if (subscriptionFreeCheck) {
-
-      const { userId, config, uuid, statusSub, subExpire, server } = subscriptionFreeCheck
-
-      const expirationDate = new Date(new Date(`${subExpire}`).getTime() + days * 24 * 60 * 60 * 1000);
-
-      const subscription = new SubscriptionSchema({
-        userId,
-        config,
-        server,
-        uuid,
-        statusSub,
-        subExpire: expirationDate,
-      })
-      subscriptionFreeCheck.statusSub = false
-
-      await Promise.all([
-        subscription.save(),
-        subscriptionFreeCheck.save()
-      ])
-
-      await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${days}</b> дней!`, {
-        parse_mode: 'HTML'
-      })
-      await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, {
-        parse_mode: 'HTML'
-      })
-      return
-
-    } else if (subscriptionCheck) {
-      const expirationDate = new Date(new Date(`${subscriptionCheck.subExpire}`).getTime() + days * 24 * 60 * 60 * 1000);
-
-      subscriptionCheck.subExpire = expirationDate
-      subscriptionCheck.warningDay = []
-      await subscriptionCheck.save()
-      await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${days}</b> дней!`, {
-        parse_mode: 'HTML'
-      })
-      await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, {
-        parse_mode: 'HTML'
-      })
+      await bot.api.sendMessage(userId, `Ваша подписка продлена на <b>${days}</b> дней!`, { parse_mode: 'HTML' })
+      await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, { parse_mode: 'HTML' })
       return
     }
 
-    const server = await checkServer(userId)
+    // --- Новая подписка: добавляем на все серверы ---
+    const servers = await checkAllServers()
+    if (!servers.length) return null
 
-    if (!server?.cookie) return null
-    //TODO Добавить логику что если у человека была подписка, то делать тот же uuid как и в прошлой подписке что бы после оплаты он мог дальше пользоваться спокойно
-    const data = await addClient(userId, server)
-    if (!data) return null
+    const serverEntries: { serverId: any; config: string }[] = []
+    for (const server of servers) {
+      const result = await addClient(userId, user.uuid!, server)
+      if (result) {
+        serverEntries.push({ serverId: server._id, config: result.config })
+        await ServerSchema.findByIdAndUpdate(server._id, { $inc: { quantityUsers: 1 } })
+      }
+    }
 
-    const { config, uuid } = data
+    if (!serverEntries.length) return null
 
     const subscription = new SubscriptionSchema({
       userId,
-      config: config,
-      uuid,
-      server,
+      type: 'paid',
       statusSub: true,
       subExpire: new Date(Date.now() + days * 24 * 60 * 60 * 1000),
+      servers: serverEntries,
     })
 
-    if (user && !user?.useFreeSub) {
+    if (!user.useFreeSub) {
       user.useFreeSub = true
-      user.save()
+      await user.save()
     }
-    await ServerSchema.findByIdAndUpdate(server.id, {
-      $inc: { quantityUsers: 1 },
-    }) // -1
     await subscription.save()
-    const oneMonthInlineBoard = new InlineKeyboard().text('🗂 Инструкция', `instructions`)
-    await bot.api.sendMessage(userId, '❗️<i>Обрати внимание, что этот конфиг предназначен только для одного устройства.</i>❗️', {
-      parse_mode: 'HTML'
-    })
-    await bot.api.sendMessage(userId, `<code>${config}</code>`, {
-      parse_mode: 'HTML'
-    })
-    await bot.api.sendMessage(userId, 'Это ваш конфиг ⬆ для VPN, скопируйте его(через долгое нажатие или просто нажмите на сообщение) и нажмите на кнопку 🗂<b>Инструкция</b>, выберите ваше устройство и подключайтесь к нам!', {
-      reply_markup: oneMonthInlineBoard,
-      parse_mode: 'HTML'
 
+    const subUrl = `${settings.SERVER_URL}/subscription/${user.subToken}`
+    const instructionBoard = new InlineKeyboard().text('🗂 Инструкция', 'instructions')
+
+    await bot.api.sendMessage(userId, `Ваша ссылка на подписку (добавьте в v2ray / Hiddify):\n<code>${subUrl}</code>`, {
+      parse_mode: 'HTML',
+      reply_markup: instructionBoard,
     })
+    await bot.api.sendMessage(userId, `Спасибо что выбрали <b>VPNinja</b> ❤️`, { parse_mode: 'HTML' })
   } catch (error) {
     console.error('paySucceeded error:', error)
     return null
   }
 }
-
-
-

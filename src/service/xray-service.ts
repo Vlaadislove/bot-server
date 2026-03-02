@@ -5,15 +5,9 @@ import ServerSchema, { IServer } from "../models/server-model";
 import { authenticator } from 'otplib';
 
 
-interface AddClientResponse {
-  config: string;
-  uuid: string;
-}
-
 export const login = async () => {
 
   try {
-    //TODO сделать что б куки спрашиало у серверов у который status: true
     const servers = await ServerSchema.find()
 
     for (let i = 0; i < servers.length; i++) {
@@ -24,6 +18,7 @@ export const login = async () => {
         'twoFactorCode': `${code}`,
       };
 
+      
       const response = await loginApi(userData, servers[i].baseUrl)
 
       if (!response) throw new Error('Ошбика получения login')
@@ -43,20 +38,18 @@ export const login = async () => {
 }
 
 
-export const addClient = async (tgId: number, server: IServer): Promise<AddClientResponse | null> => {
-  const uuid: string = uuidv4()
+export const addClient = async (tgId: number, uuid: string, server: IServer): Promise<{ config: string } | null> => {
   const subId: string = uuidv4().replace(/-/g, '')
   const data = {
     "id": 1,
     "settings": `{\"clients\":[{\"id\":\"${uuid}\",\"flow\":\"xtls-rprx-vision\",\"email\":\"${tgId}\",\"limitIp\":0,\"totalGB\":0,\"expiryTime\":0,\"enable\":true,\"tgId\":\"\",\"subId\":\"${subId}\",\"reset\":0}]}`
   }
   try {
-
     const response = await addClientApi(data, server.cookie, server.baseUrl)
     if (!response) throw new Error('Ошибка добавления клиента')
     if (response.data.success) {
       const config: string = `vless://${uuid}@${server.ip}?type=tcp&encryption=none&security=reality&pbk=${server.publickKey}&fp=random&sni=${server.sni}&sid=${server.sidId}&spx=%2F&flow=xtls-rprx-vision#VPNinja-${tgId}`
-      return { config, uuid }
+      return { config }
     } else {
       console.log('Не удалось отправить конфиг', response.data.success)
       return null

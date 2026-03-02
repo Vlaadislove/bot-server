@@ -1,12 +1,12 @@
 import cron from 'node-cron';
 import SubscriptionSchema, { ISubscription } from "../models/subscription-model"
 import { bot } from '../index'
-import SubscriptionFreeSchema from "../models/free-subscription-model"
 import { deleteClient, login } from "./xray-service"
 import PaymentSchema from "../models/payment-model"
 import { checkPayment } from "./payment-service"
 import { simulateAsyncOperation } from "./other-service"
 import { InlineKeyboard } from 'grammy';
+import UserSchema from '../models/user-model';
 
 
 export const checkWarningDay = async () => {
@@ -18,25 +18,24 @@ export const checkWarningDay = async () => {
 
     const warningThreeDay = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: dayThree }, warningDay: { $nin: 3 } })
     const warningOneDay = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: dayOne }, warningDay: { $nin: 1 } })
-    const warningOneDayFreeSubscribe = await SubscriptionFreeSchema.find({ statusSub: true, subExpire: { $lt: dayOne }, warningDay: { $nin: 1 } })
-
-    // console.log('warningThreeDay', warningThreeDay)
-    // console.log('warningOneDay', warningOneDay)
-    // console.log('warningOneDayFreeSubscribe', warningOneDayFreeSubscribe)
 
     const updateWarningDay = async (subscription: ISubscription, warningDay: number) => {
       await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
       try {
-        warningDay == 3 && await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`, {
-          reply_markup: connectInlineBoard
-        })
-        warningDay == 1 && await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания подписки!❗️`, {
-          reply_markup: connectInlineBoard
-        })
+        if (warningDay === 3) {
+          await bot.api.sendMessage(subscription.userId, `❗️Осталось ${warningDay} дня до окончания подписки!❗️`, {
+            reply_markup: connectInlineBoard
+          })
+        }
+        if (warningDay === 1) {
+          await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания подписки!❗️`, {
+            reply_markup: connectInlineBoard
+          })
+        }
       } catch (error) {
         if (error instanceof Error && 'error_code' in error && 'description' in error) {
           const e = error as { error_code: number, description: string };
-          if (e.error_code === 403 && e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated')) {
+          if (e.error_code === 403 && (e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated'))) {
             await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
           } else {
             console.error('An unexpected error occurred:', e);
@@ -45,33 +44,16 @@ export const checkWarningDay = async () => {
           console.error('An unexpected error occurred:', error);
         }
       }
-
     };
 
-    const updateFreeWarningDay = async (subscription: ISubscription, warningDay: number) => {
-      await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
-      try {
-        await bot.api.sendMessage(subscription.userId, `❗️Остался ${warningDay} день до окончания бесплатной подписки!❗️`, {
-          reply_markup: connectInlineBoard
-        })
-      } catch (error) {
-        if (error instanceof Error && 'error_code' in error && 'description' in error) {
-          const e = error as { error_code: number, description: string };
-          if (e.error_code === 403 && e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated')) {
-            await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $push: { warningDay } });
-          } else {
-            console.error('An unexpected error occurred:', e);
-          }
-        } else {
-          console.error('An unexpected error occurred:', error);
-        }
-      }
-
-    };
-
-    warningThreeDay.forEach(async subscription => await updateWarningDay(subscription, 3));
-    warningOneDay.forEach(async subscription => await updateWarningDay(subscription, 1));
-    warningOneDayFreeSubscribe.forEach(async subscription => await updateFreeWarningDay(subscription, 1));
+    for (const subscription of warningThreeDay) {
+      await updateWarningDay(subscription, 3);
+      await simulateAsyncOperation(1500);
+    }
+    for (const subscription of warningOneDay) {
+      await updateWarningDay(subscription, 1);
+      await simulateAsyncOperation(1500);
+    }
 
   } catch (error) {
     console.log(error)
@@ -83,30 +65,37 @@ export const checkStatusSubscribes = async () => {
     .text('💳 Продлить подписку', 'connect')
   try {
     const currentDay = new Date()
+    const expired = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: currentDay } })
 
-    const getSubscribe = await SubscriptionSchema.find({ statusSub: true, subExpire: { $lt: currentDay } })
-    const getStatusSubscribeFree = await SubscriptionFreeSchema.find({ statusSub: true, subExpire: { $lt: currentDay } })
-
-    // console.log('getSubscribe', getSubscribe)
-    // console.log('getStatusSubscribeFree', getStatusSubscribeFree)
-
-    const checkStatusSubscribe = async (subscription: ISubscription) => {
-
-
+    const handleExpired = async (subscription: ISubscription) => {
       try {
         await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
-        await deleteClient(subscription.uuid, subscription.server)
-        await bot.api.sendMessage(subscription.userId, `Подписка кончилась!😢`, {
+
+        const user = await UserSchema.findOne({ userId: subscription.userId })
+        if (user?.uuid) {
+          for (const entry of subscription.servers) {
+            await deleteClient(user.uuid, entry.serverId)
+          }
+        }
+
+        const msgText = subscription.type === 'free'
+          ? `Бесплатная подписка кончилась!😢`
+          : `Подписка кончилась!😢`
+
+        await bot.api.sendMessage(subscription.userId, msgText, {
           reply_markup: connectInlineBoard
         })
-
       } catch (error) {
         if (error instanceof Error && 'error_code' in error && 'description' in error) {
           const e = error as { error_code: number, description: string };
-          console.log(e.error_code)
-          if (e.error_code === 403 && e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated')) {
+          if (e.error_code === 403 && (e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated'))) {
             await SubscriptionSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
-            await deleteClient(subscription.uuid, subscription.server)
+            const user = await UserSchema.findOne({ userId: subscription.userId })
+            if (user?.uuid) {
+              for (const entry of subscription.servers) {
+                await deleteClient(user.uuid, entry.serverId)
+              }
+            }
           } else {
             console.error('An unexpected error occurred:', e);
           }
@@ -114,47 +103,12 @@ export const checkStatusSubscribes = async () => {
           console.error('An unexpected error occurred:', error);
         }
       }
-
-    }
-    const checkStatusSubscribeFree = async (subscription: ISubscription) => {
-      try {
-        await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
-        await deleteClient(subscription.uuid, subscription.server)
-        await bot.api.sendMessage(subscription.userId, `Бесплатная подписка кончилась!😢`, {
-          reply_markup: connectInlineBoard
-        })
-
-      } catch (error) {
-        if (error instanceof Error && 'error_code' in error && 'description' in error) {
-          const e = error as { error_code: number, description: string };
-          if (e.error_code === 403 && e.description.includes('bot was blocked by the user') || e.description.includes('user is deactivated')) {
-            await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
-            await deleteClient(subscription.uuid, subscription.server)
-          } else {
-            console.error('An unexpected error occurred:', e);
-          }
-        } else {
-          console.error('An unexpected error occurred:', error);
-        }
-
-        // await SubscriptionFreeSchema.findByIdAndUpdate(subscription._id, { $set: { statusSub: false } });
-        // await deleteClient(subscription.uuid, subscription.server)
-      }
-
     }
 
-    for (const subscription of getSubscribe) {
-      await checkStatusSubscribe(subscription);
+    for (const subscription of expired) {
+      await handleExpired(subscription);
       await simulateAsyncOperation(1500);
     }
-
-    for (const subscription of getStatusSubscribeFree) {
-      await checkStatusSubscribeFree(subscription);
-      await simulateAsyncOperation(1500);
-    }
-    // getSubscribe.forEach(subscription => checkStatusSubscribe(subscription));
-    // getStatusSubscribeFree.forEach(subscription => checkStatusSubscribeFree(subscription));
-
 
   } catch (error) {
     console.log(error)

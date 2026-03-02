@@ -1,61 +1,98 @@
 import ServerSchema from './../models/server-model';
-import { GrammyError, HttpError, InlineKeyboard } from 'grammy'
+import { InlineKeyboard } from 'grammy'
 import { bot } from '../index'
-import SubscriptionFreeSchema from '../models/free-subscription-model'
+import SubscriptionSchema from '../models/subscription-model'
 import UserSchema from '../models/user-model'
 import { addClient } from './xray-service'
 import * as settings from "../settings"
+import { v4 as uuidv4 } from 'uuid';
 
+
+export const ensureUserTokens = async (userId: number) => {
+	const user = await UserSchema.findOne({ userId });
+	if (!user) return null;
+	if (!user.uuid) user.uuid = uuidv4();
+	if (!user.subToken) user.subToken = uuidv4().replace(/-/g, '').slice(0, 16);
+	await user.save();
+	return user;
+};
+
+
+export const checkAllServers = async () => {
+	const servers = await ServerSchema.find({ status: true });
+	return servers.filter(s => s.quantityUsers <= settings.MAX_USERS_ON_SERVER);
+};
+
+
+export const checkServer = async (userId: number) => {
+	const servers = await ServerSchema.find({ status: true })
+	const serversFilter = servers.filter((item) => item.quantityUsers <= settings.MAX_USERS_ON_SERVER)
+
+	let result = serversFilter[0];
+	if (!result) {
+		await bot.api.sendMessage(userId, `<b>БЕЗ ПАНИКИ!</b> При попытки добавить вас в список разрешенных пользователей произошла ошибка, вероятно сервера перегружены, пожалуйста напишите мне ${settings.SUPPORT_NAME} и мы все решим! Просим прощение за доставленые неудобства, сделаем подарок!`, {
+			parse_mode: 'HTML'
+		})
+		return
+	}
+	for (let i = 1; i < serversFilter.length; i++) {
+		if (serversFilter[i].quantityUsers < result.quantityUsers) {
+			result = serversFilter[i];
+		}
+	}
+	return result;
+};
 
 
 export const freeSubscription = async (userId: number) => {
 	try {
-		const sub = await SubscriptionFreeSchema.findOne({ userId, statusSub: true })
-		const user = await UserSchema.findOne({ userId })
+		const existingFreeSub = await SubscriptionSchema.findOne({ userId, statusSub: true, type: 'free' })
+		const user = await ensureUserTokens(userId)
 
-		if (sub || !user || user.useFreeSub) return { status: false, message: 'Ошибка при проверке бесплатной подписки' }
+		if (existingFreeSub || !user || user.useFreeSub) {
+			return { status: false, message: 'Ошибка при проверке бесплатной подписки' }
+		}
 
-		const server = await checkServer(userId)
+		const servers = await checkAllServers()
+		if (!servers.length) {
+			await bot.api.sendMessage(userId, `<b>БЕЗ ПАНИКИ!</b> Сервера перегружены, пожалуйста напишите мне ${settings.SUPPORT_NAME}!`, {
+				parse_mode: 'HTML'
+			})
+			return null
+		}
 
-		if (!server?.cookie) return null
-		const data = await addClient(userId, server)
-		if (!data) return null
-		const { config, uuid } = data
+		const serverEntries: { serverId: any; config: string }[] = []
+		for (const server of servers) {
+			const result = await addClient(userId, user.uuid!, server)
+			if (result) {
+				serverEntries.push({ serverId: server._id, config: result.config })
+				await ServerSchema.findByIdAndUpdate(server._id, { $inc: { quantityUsers: 1 } })
+			}
+		}
 
-		const subscription = new SubscriptionFreeSchema({
+		if (!serverEntries.length) return null
+
+		const subscription = new SubscriptionSchema({
 			userId,
-			config,
-			server,
-			uuid,
+			type: 'free',
 			statusSub: true,
 			subExpire: new Date(Date.now() + settings.FREE_DAY * 24 * 60 * 60 * 1000),
+			servers: serverEntries,
 		})
 
 		user.useFreeSub = true
-		await ServerSchema.findByIdAndUpdate(server.id, {
-			$inc: { quantityUsers: 1 },
-		}) // -1
-        await Promise.all([
-            user.save(),
-            subscription.save()
-        ])
+		await Promise.all([user.save(), subscription.save()])
 
+		const subUrl = `${settings.SERVER_URL}/subscription/${user.subToken}`
+		const instructionBoard = new InlineKeyboard().text('🗂 Инструкция', 'instructions')
 
-		const oneMonthInlineBoard = new InlineKeyboard().text('🗂 Инструкция', `instructions`)
-		await bot.api.sendMessage(userId, '❗️<i>Обрати внимание, что этот конфиг предназначен только для одного устройства.</i>❗️', {
-			parse_mode: 'HTML'
-		})
-		await bot.api.sendMessage(userId, `<code>${config}</code>`, {
-			parse_mode: 'HTML'
-		})
-		await bot.api.sendMessage(userId, 'Это ваш конфиг ⬆ для VPN, скопируйте его(через долгое нажатие или просто нажмите на сообщение)  и нажмите на кнопку 🗂<b>Инструкция</b>, выберите ваше устройство и подключайтесь к нам!', {
-			reply_markup: oneMonthInlineBoard,
-			parse_mode: 'HTML'
+		await bot.api.sendMessage(userId, `Ваша ссылка на подписку (добавьте в v2ray / Hiddify):\n<code>${subUrl}</code>`, {
+			parse_mode: 'HTML',
+			reply_markup: instructionBoard,
 		})
 	} catch (error) {
 		console.log(error)
 	}
-
 }
 
 
@@ -68,35 +105,15 @@ export function simulateAsyncOperation(ms: number) {
 }
 
 
-export const checkServer = async (userId:number) => {
-	const servers = await ServerSchema.find({ status: true })
-	const serversFilter = servers.filter((item) => item.quantityUsers <= settings.MAX_USERS_ON_SERVER)
-
-	let result = serversFilter[0];
-    if(!result){
-        await bot.api.sendMessage(userId, `<b>БЕЗ ПАНИНКИ!</b> При попытки добавить вас в список разрешенных пользователей произошла ошибка, вероятно сервера перегружены, пожалуйста напишите мне ${settings.SUPPORT_NAME} и мы все решим! Просим прощение за доставленые неудобства, сделаем подарок!`, {
-			parse_mode: 'HTML'
-		})
-        return
-    }
-	for (let i = 1; i < serversFilter.length; i++) {
-		if (serversFilter[i].quantityUsers < result.quantityUsers) {
-			result = serversFilter[i];
-		}
-	}
-	return result;
-};
-
-type NormalizedWebhook = { paymentId: string; status: string;};
+type NormalizedWebhook = { paymentId: string; status: string };
 
 export const normalizeWebhook = (payload: any): NormalizedWebhook | null => {
-  const obj = payload?.object;
-  const paymentId = obj?.id;
-  const status = obj?.status;
+	const obj = payload?.object;
+	const paymentId = obj?.id;
+	const status = obj?.status;
 
-
-  if (typeof paymentId !== 'string' || typeof status !== 'string') {
-    return null;
-  }
-  return { paymentId, status};
+	if (typeof paymentId !== 'string' || typeof status !== 'string') {
+		return null;
+	}
+	return { paymentId, status };
 };

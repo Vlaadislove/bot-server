@@ -21,7 +21,13 @@ export const UserSchema = new mongoose.Schema(
         useFreeSub: {
             type: Boolean,
             default: false
-        }
+        },
+        uuid: {
+            type: String,
+        },
+        subToken: {
+            type: String,
+        },
     },
     { timestamps: true, collection: "users" }
 );

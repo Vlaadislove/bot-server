@@ -15,6 +15,10 @@ export const MAX_USERS_ON_SERVER = Number(process.env.MAX_USERS_ON_SERVER) || 0
 
 export const NAME_TG_BOT = process.env.NAME_TG_BOT || ' '
 export const SUPPORT_NAME = process.env.SUPPORT_NAME || ' '
+export const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000'
+
+export const PRICE_30_DAYS = Number(process.env.PRICE_30_DAYS) || 170
+export const PRICE_90_DAYS = Number(process.env.PRICE_90_DAYS) || 480
 
 
 

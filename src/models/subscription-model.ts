@@ -1,16 +1,17 @@
-import mongoose, { Model, Document, Types } from "mongoose";
+import mongoose, { Document, Types } from "mongoose";
+
+export interface IServerEntry {
+    serverId: Types.ObjectId;
+    config: string;
+}
 
 export interface ISubscription extends Document {
     userId: number;
-    config: string;
-    uuid: string;
+    type: 'paid' | 'free';
     statusSub: boolean;
     subExpire: Date;
     warningDay: number[];
-    server: Types.ObjectId;
-    expireAt?: Date | null | undefined;
-    // createdAt: Date;
-    // updatedAt: Date;
+    servers: IServerEntry[];
 }
 
 export const SubscriptionSchema = new mongoose.Schema(
@@ -19,12 +20,9 @@ export const SubscriptionSchema = new mongoose.Schema(
             type: Number,
             required: true,
         },
-        config: {
+        type: {
             type: String,
-            required: true,
-        },
-        uuid: {
-            type: String,
+            enum: ['paid', 'free'],
             required: true,
         },
         statusSub: {
@@ -35,19 +33,25 @@ export const SubscriptionSchema = new mongoose.Schema(
             type: Date,
             required: true,
         },
-        expiresAt: {
-            type: Date,
-        },
         warningDay: {
-            type: [Number]
+            type: [Number],
+            default: [],
         },
-        server: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'Server',
-            required: true,
-        }
+        servers: [
+            {
+                serverId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'Server',
+                    required: true,
+                },
+                config: {
+                    type: String,
+                    required: true,
+                },
+            },
+        ],
     },
     { timestamps: true, collection: "subscription" }
 );
 
-export default mongoose.model('Subscription', SubscriptionSchema)
+export default mongoose.model<ISubscription>('Subscription', SubscriptionSchema)
