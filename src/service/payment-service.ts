@@ -2,10 +2,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { createPaymentApi, getPaymentApi } from '../api/apiYoo';
 import PaymentSchema from '../models/payment-model';
 import SubscriptionSchema from '../models/subscription-model';
+import PromoSchema from '../models/promo-model';
 import { addClient } from './xray-service';
 import { bot } from '../index'
-import { InlineKeyboard } from 'grammy';
-import { checkAllServers, ensureUserTokens, normalizeWebhook, simulateAsyncOperation } from './other-service';
+import { checkAllServers, ensureUserTokens, normalizeWebhook, sendSubMessage, simulateAsyncOperation } from './other-service';
 import UserSchema from '../models/user-model';
 import ServerSchema from '../models/server-model';
 import * as settings from "../settings"
@@ -184,16 +184,64 @@ export const paySucceeded = async (userId: number, price: string) => {
     }
     await subscription.save()
 
-    const subUrl = `${settings.SERVER_URL}/subscription/${user.subToken}`
-    const instructionBoard = new InlineKeyboard().text('🗂 Инструкция', 'instructions')
-
-    await bot.api.sendMessage(userId, `<code>${subUrl}</code>`, { parse_mode: 'HTML' })
-    await bot.api.sendMessage(userId, `Скопируйте ссылку выше и вставьте в приложение (v2ray, Hiddify и др.) — она понадобится для подключения к VPN.\n\n<b>Спасибо что выбрали VPNinja</b> ❤️`, {
-      parse_mode: 'HTML',
-      reply_markup: instructionBoard,
-    })
+    await sendSubMessage(userId, user.subToken!)
   } catch (error) {
     console.error('paySucceeded error:', error)
     return null
+  }
+}
+
+
+export const activatePromo = async (userId: number, code: string) => {
+  try {
+    const promo = await PromoSchema.findOne({ code, isUsed: false })
+    if (!promo) return { error: 'Промокод не найден или уже использован' }
+
+    const user = await ensureUserTokens(userId)
+    if (!user) return { error: 'Пользователь не найден' }
+
+    promo.isUsed = true
+    promo.usedBy = userId
+    promo.usedAt = new Date()
+    await promo.save()
+
+    const friendExpire = new Date()
+    friendExpire.setFullYear(friendExpire.getFullYear() + 100)
+
+    const activeSub = await SubscriptionSchema.findOne({ userId, statusSub: true })
+    if (activeSub) {
+      activeSub.subExpire = friendExpire
+      activeSub.type = 'friend'
+      activeSub.warningDay = []
+      await activeSub.save()
+      await sendSubMessage(userId, user.subToken!)
+      return { ok: true }
+    }
+
+    const servers = await checkAllServers()
+    if (!servers.length) return { error: 'Нет доступных серверов' }
+
+    const serverEntries: { serverId: any; config: string }[] = []
+    for (const server of servers) {
+      const result = await addClient(userId, user.uuid!, server)
+      if (result) {
+        serverEntries.push({ serverId: server._id, config: result.config })
+        await ServerSchema.findByIdAndUpdate(server._id, { $inc: { quantityUsers: 1 } })
+      }
+    }
+    if (!serverEntries.length) return { error: 'Не удалось добавить на серверы' }
+
+    const subscription = new SubscriptionSchema({
+      userId, type: 'friend', statusSub: true,
+      subExpire: friendExpire,
+      servers: serverEntries,
+    })
+    await subscription.save()
+
+    await sendSubMessage(userId, user.subToken!)
+    return { ok: true }
+  } catch (error) {
+    console.error('activatePromo error:', error)
+    return { error: 'Внутренняя ошибка' }
   }
 }

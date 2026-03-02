@@ -83,17 +83,21 @@ export const freeSubscription = async (userId: number) => {
 		user.useFreeSub = true
 		await Promise.all([user.save(), subscription.save()])
 
-		const subUrl = `${settings.SERVER_URL}/subscription/${user.subToken}`
-		const instructionBoard = new InlineKeyboard().text('🗂 Инструкция', 'instructions')
-
-		await bot.api.sendMessage(userId, `<code>${subUrl}</code>`, { parse_mode: 'HTML' })
-		await bot.api.sendMessage(userId, `Скопируйте ссылку выше и вставьте в приложение (v2ray, Hiddify и др.) — она понадобится для подключения к VPN.\n\n<b>Спасибо что выбрали VPNinja</b> ❤️`, {
-			parse_mode: 'HTML',
-			reply_markup: instructionBoard,
-		})
+		await sendSubMessage(userId, user.subToken!)
 	} catch (error) {
 		console.log(error)
 	}
+}
+
+
+export const sendSubMessage = async (userId: number, subToken: string) => {
+	const subUrl = `${settings.SERVER_URL}/subscription/${subToken}`
+	const instructionBoard = new InlineKeyboard().text('🗂 Инструкция', 'instructions')
+	await bot.api.sendMessage(userId, `<code>${subUrl}</code>`, { parse_mode: 'HTML' })
+	await bot.api.sendMessage(userId, `Скопируйте ссылку выше и вставьте в приложение (v2ray, Hiddify и др.) — она понадобится для подключения к VPN.\n\n<b>Спасибо что выбрали VPNinja</b> ❤️`, {
+		parse_mode: 'HTML',
+		reply_markup: instructionBoard,
+	})
 }
 
 

@@ -7,7 +7,7 @@ export interface IServerEntry {
 
 export interface ISubscription extends Document {
     userId: number;
-    type: 'paid' | 'free';
+    type: 'paid' | 'free' | 'friend';
     statusSub: boolean;
     subExpire: Date;
     warningDay: number[];
@@ -22,7 +22,7 @@ export const SubscriptionSchema = new mongoose.Schema(
         },
         type: {
             type: String,
-            enum: ['paid', 'free'],
+            enum: ['paid', 'free', 'friend'],
             required: true,
         },
         statusSub: {
