@@ -33,7 +33,6 @@ export const addClientApi = async (data: IClientData, cookie: string, baseUrl: s
 export const deleteClientApi = async (uuid: string, cookie: string, baseUrl: string) => {
     try {
         const response = await axios.post(`${baseUrl}/panel/api/inbounds/1/delClient/${uuid}`, null, { headers: { 'Cookie': cookie } })
-        console.log(response.data)
         return response
     } catch (error) {
         console.log(error)
@@ -43,7 +42,7 @@ export const deleteClientApi = async (uuid: string, cookie: string, baseUrl: str
 export const deleteClientByEmailApi = async (userId: number, cookie: string, baseUrl: string) => {
     try {
         const response = await axios.post(`${baseUrl}/panel/api/inbounds/1/delClientByEmail/${userId}`, null, { headers: { 'Cookie': cookie } })
-        console.log(response.data)
+
         return response
     } catch (error) {
         console.log(error)
