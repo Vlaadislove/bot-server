@@ -136,7 +136,7 @@ export const checkPaymentOneTime = async () => {
   }
 }
 
-export const allFunctionCheck = () => {
+export const allFunctionCheck = async () => {
 
   cron.schedule('0 */6 * * *', () => {
     login();
@@ -153,8 +153,9 @@ export const allFunctionCheck = () => {
     }
   });
 
+  await login()
   checkWarningDay()
   checkStatusSubscribes()
   checkPaymentOneTime()
-  login()
+
 }
