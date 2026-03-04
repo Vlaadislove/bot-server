@@ -74,7 +74,7 @@ export const checkStatusSubscribes = async () => {
         const user = await UserSchema.findOne({ userId: subscription.userId })
         if (user?.uuid) {
           for (const entry of subscription.servers) {
-            await deleteClient(user.uuid, entry.serverId)
+            await deleteClient(user.uuid, subscription.userId, entry.serverId)
           }
         }
 
@@ -93,7 +93,7 @@ export const checkStatusSubscribes = async () => {
             const user = await UserSchema.findOne({ userId: subscription.userId })
             if (user?.uuid) {
               for (const entry of subscription.servers) {
-                await deleteClient(user.uuid, entry.serverId)
+                await deleteClient(user.uuid, subscription.userId, entry.serverId)
               }
             }
           } else {

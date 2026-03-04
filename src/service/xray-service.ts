@@ -1,6 +1,6 @@
 import * as settings from "../settings"
 import { v4 as uuidv4 } from 'uuid';
-import { addClientApi, deleteClientApi, loginApi } from "../api/apiXray";
+import { addClientApi, deleteClientApi, deleteClientByEmailApi, loginApi } from "../api/apiXray";
 import ServerSchema, { IServer } from "../models/server-model";
 import { authenticator } from 'otplib';
 
@@ -62,7 +62,7 @@ export const addClient = async (tgId: number, uuid: string, server: IServer): Pr
 }
 
 
-export const deleteClient = async (uuid: string, server: Object) => {
+export const deleteClient = async (uuid: string, userId: number, server: Object) => {
   try {
     const getServer = await ServerSchema.findByIdAndUpdate(server, { $inc: { quantityUsers: -1 } }, { new: true })
     if (!getServer) {
@@ -70,6 +70,7 @@ export const deleteClient = async (uuid: string, server: Object) => {
       return
     }
     await deleteClientApi(uuid, getServer.cookie, getServer.baseUrl)
+    await deleteClientByEmailApi(userId, getServer.cookie, getServer.baseUrl)
   } catch (error) {
     console.log(error)
   }
